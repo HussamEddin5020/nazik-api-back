@@ -8,6 +8,10 @@ const { successResponse, errorResponse, sanitizeUser } = require('../utils/helpe
  * Generate JWT Token
  */
 const generateToken = (userId, type) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  
   return jwt.sign(
     { userId, type },
     process.env.JWT_SECRET,
@@ -19,6 +23,10 @@ const generateToken = (userId, type) => {
  * Generate Refresh Token
  */
 const generateRefreshToken = (userId) => {
+  if (!process.env.JWT_REFRESH_SECRET) {
+    throw new Error('JWT_REFRESH_SECRET environment variable is required');
+  }
+  
   return jwt.sign(
     { userId },
     process.env.JWT_REFRESH_SECRET,
