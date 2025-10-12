@@ -80,7 +80,6 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
       u.email as customer_email,
       u.phone as customer_phone,
       cu.id as customer_id,
-      c.name as cart_name,
       cart.is_available as cart_is_available
      FROM orders o
      LEFT JOIN order_details od ON o.id = od.order_id
@@ -89,7 +88,6 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
      LEFT JOIN users u ON cu.user_id = u.id
      LEFT JOIN brands b ON o.brand_id = b.id
      LEFT JOIN cart ON o.cart_id = cart.id
-     LEFT JOIN collections c ON o.collection_id = c.id
      ${whereClause}
      ORDER BY o.created_at DESC
      LIMIT ? OFFSET ?`,
