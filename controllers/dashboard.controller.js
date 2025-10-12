@@ -8,55 +8,63 @@ const { successResponse } = require('../utils/helpers');
  * @access  Private (Staff)
  */
 exports.getStatistics = asyncHandler(async (req, res) => {
-  // Total orders
-  const [totalOrders] = await db.query(
-    'SELECT COUNT(*) as total FROM orders WHERE is_archived = 0'
-  );
+  try {
+    console.log('📊 Dashboard Statistics Request - User:', req.user?.id);
+    
+    // Total orders
+    const [totalOrders] = await db.query(
+      'SELECT COUNT(*) as total FROM orders WHERE is_archived = 0'
+    );
 
-  // Total customers
-  const [totalCustomers] = await db.query(
-    'SELECT COUNT(*) as total FROM customers'
-  );
+    // Total customers
+    const [totalCustomers] = await db.query(
+      'SELECT COUNT(*) as total FROM customers'
+    );
 
-  // Orders by position
-  const [ordersByPosition] = await db.query(
-    `SELECT op.name, COUNT(o.id) as count
-     FROM orders o
-     JOIN order_position op ON o.position_id = op.id
-     WHERE o.is_archived = 0
-     GROUP BY o.position_id, op.name
-     ORDER BY count DESC`
-  );
+    // Orders by position
+    const [ordersByPosition] = await db.query(
+      `SELECT op.name, COUNT(o.id) as count
+       FROM orders o
+       JOIN order_position op ON o.position_id = op.id
+       WHERE o.is_archived = 0
+       GROUP BY o.position_id, op.name
+       ORDER BY count DESC`
+    );
 
-  // Active carts
-  const [activeCarts] = await db.query(
-    'SELECT COUNT(*) as total FROM cart WHERE is_available = 1'
-  );
+    // Active carts
+    const [activeCarts] = await db.query(
+      'SELECT COUNT(*) as total FROM cart WHERE is_available = 1'
+    );
 
-  // Total invoices
-  const [totalInvoices] = await db.query(
-    'SELECT COUNT(*) as total, SUM(total_amount) as total_amount FROM order_invoices'
-  );
+    // Total invoices
+    const [totalInvoices] = await db.query(
+      'SELECT COUNT(*) as total, SUM(total_amount) as total_amount FROM order_invoices'
+    );
 
-  // Recent activity
-  const [recentActivity] = await db.query(
-    `SELECT actor_name, action_type, table_name, description, created_at
-     FROM v_audit_log_detailed
-     ORDER BY created_at DESC
-     LIMIT 10`
-  );
+    // Recent activity
+    const [recentActivity] = await db.query(
+      `SELECT actor_name, action_type, table_name, description, created_at
+       FROM v_audit_log_detailed
+       ORDER BY created_at DESC
+       LIMIT 10`
+    );
 
-  const statistics = {
-    totalOrders: totalOrders[0].total,
-    totalCustomers: totalCustomers[0].total,
-    ordersByPosition,
-    activeCarts: activeCarts[0].total,
-    totalInvoices: totalInvoices[0].total,
-    totalRevenue: totalInvoices[0].total_amount || 0,
-    recentActivity
-  };
+    const statistics = {
+      totalOrders: totalOrders[0].total,
+      totalCustomers: totalCustomers[0].total,
+      ordersByPosition,
+      activeCarts: activeCarts[0].total,
+      totalInvoices: totalInvoices[0].total,
+      totalRevenue: totalInvoices[0].total_amount || 0,
+      recentActivity
+    };
 
-  successResponse(res, statistics);
+    console.log('✅ Dashboard Statistics Response:', statistics);
+    successResponse(res, statistics);
+  } catch (error) {
+    console.error('❌ Dashboard Statistics Error:', error);
+    throw error;
+  }
 });
 
 /**

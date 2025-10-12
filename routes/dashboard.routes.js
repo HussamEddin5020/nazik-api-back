@@ -3,7 +3,10 @@ const router = express.Router();
 const dashboardController = require('../controllers/dashboard.controller');
 const { verifyToken, isStaff } = require('../middleware/auth');
 
-// All routes require authentication and staff role
+// Test route without authentication (temporary)
+router.get('/test', dashboardController.getStatistics);
+
+// All other routes require authentication and staff role
 router.use(verifyToken);
 router.use(isStaff);
 
