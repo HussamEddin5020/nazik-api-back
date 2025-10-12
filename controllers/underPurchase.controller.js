@@ -1,6 +1,6 @@
 const db = require('../config/database');
 const { successResponse, errorResponse, buildPaginationResponse } = require('../utils/helpers');
-const asyncHandler = require('../middleware/asyncHandler');
+const asyncHandler = require('../utils/asyncHandler');
 
 /**
  * @desc    Get orders under purchase (position_id = 2)
