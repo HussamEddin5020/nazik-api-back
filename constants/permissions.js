@@ -1,0 +1,49 @@
+/**
+ * Permission Constants
+ * These match the permissions table in the database
+ */
+
+const PERMISSIONS = {
+  VIEW: 4004000001,
+  ADD: 4004000002,
+  UPDATE: 4004000003,
+  DELETE: 4004000004,
+  CONFIRM_DEPOSIT: 4004000005,
+  MANAGE_FX: 4004000006
+};
+
+const PERMISSION_NAMES = {
+  4004000001: 'view',
+  4004000002: 'add',
+  4004000003: 'update',
+  4004000004: 'delete',
+  4004000005: 'confirm_deposit',
+  4004000006: 'manage_fx'
+};
+
+const ACTIONS = {
+  NEW: 1,
+  UNDER_PURCHASE: 2,
+  PURCHASED: 3,
+  RECEIVED_IN_TURKEY: 4,
+  BOXED: 5,
+  SHIPPED: 6,
+  ARRIVED_IN_LIBYA: 7,
+  PREPARING: 8,
+  READY_FOR_DELIVERY: 9,
+  OUT_FOR_DELIVERY: 10,
+  DELIVERED: 11,
+  CANCELLED: 12,
+  RETURN_PENDING: 13,
+  RETURNED_TO_TURKEY: 14,
+  RETURNED: 15,
+  PARTIAL: 16
+};
+
+module.exports = {
+  PERMISSIONS,
+  PERMISSION_NAMES,
+  ACTIONS
+};
+
+
