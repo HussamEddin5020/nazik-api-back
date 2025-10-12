@@ -28,6 +28,8 @@ const invoiceRoutes = require('./routes/invoice.routes');
 const addressRoutes = require('./routes/address.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const auditRoutes = require('./routes/audit.routes');
+const underPurchaseRoutes = require('./routes/underPurchase.routes');
+const testRoutes = require('./routes/test.routes');
 
 // Initialize Express app
 const app = express();
@@ -78,6 +80,8 @@ app.use('/api/v1/invoices', invoiceRoutes);
 app.use('/api/v1/addresses', addressRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/audit', auditRoutes);
+app.use('/api/v1/under-purchase', underPurchaseRoutes);
+app.use('/api/v1/test', testRoutes);
 
 // 404 handler
 app.use(notFound);

@@ -34,8 +34,29 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
+    // Get user permissions if user is staff
+    let permissions = [];
+    if (users[0].type === 'user') {
+      const [userPermissions] = await db.query(
+        `SELECT 
+          p.id as permission_id,
+          p.name as permission_name,
+          a.id as action_id,
+          a.name as action_name
+         FROM user_permissions up
+         JOIN permissions p ON up.permission_id = p.id
+         JOIN actions a ON up.action_id = a.id
+         WHERE up.user_id = ?`,
+        [decoded.userId]
+      );
+      permissions = userPermissions;
+    }
+
     // Attach user to request
-    req.user = users[0];
+    req.user = {
+      ...users[0],
+      permissions
+    };
     
     // Set session variables for database triggers
     await db.query('SET @current_user_id = ?', [req.user.id]);
