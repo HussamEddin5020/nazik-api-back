@@ -1,4 +1,4 @@
-const { errorResponse } = require('../utils/responseHelper');
+const { errorResponse } = require('../utils/helpers');
 
 /**
  * Check if user has specific permission
