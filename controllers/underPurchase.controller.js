@@ -80,7 +80,8 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
       u.email as customer_email,
       u.phone as customer_phone,
       cu.id as customer_id,
-      cart.is_available as cart_is_available
+      cart.is_available as cart_is_available,
+      oi.quantity as invoice_quantity
      FROM orders o
      LEFT JOIN order_details od ON o.id = od.order_id
      LEFT JOIN order_position op ON o.position_id = op.id
@@ -88,6 +89,7 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
      LEFT JOIN users u ON cu.user_id = u.id
      LEFT JOIN brands b ON o.brand_id = b.id
      LEFT JOIN cart ON o.cart_id = cart.id
+     LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
      ${whereClause}
      ORDER BY o.created_at DESC
      LIMIT ? OFFSET ?`,
@@ -142,7 +144,8 @@ exports.getOrderDetails = asyncHandler(async (req, res) => {
       ci.name as city_name,
       ar.name as area_name,
       cart.is_available as cart_is_available,
-      cart.orders_count as cart_orders_count
+      cart.orders_count as cart_orders_count,
+      oi.quantity as invoice_quantity
      FROM orders o
      LEFT JOIN order_details od ON o.id = od.order_id
      LEFT JOIN order_position op ON o.position_id = op.id
@@ -153,6 +156,7 @@ exports.getOrderDetails = asyncHandler(async (req, res) => {
      LEFT JOIN addresses a ON cu.address_id = a.id
      LEFT JOIN cities ci ON a.city_id = ci.id
      LEFT JOIN areas ar ON a.area_id = ar.id
+     LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
      WHERE o.id = ? AND o.position_id = 2`,
     [id]
   );
