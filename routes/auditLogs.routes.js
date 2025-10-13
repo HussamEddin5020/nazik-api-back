@@ -7,11 +7,11 @@ const {
   getAuditLogStats,
   getAuditLogDetails
 } = require('../controllers/auditLogs.controller');
-const { authenticateToken } = require('../middleware/auth');
+const { verifyToken } = require('../middleware/auth');
 
 // جميع الـ routes تتطلب مصادقة فقط (للمستخدمين النظاميين)
 // يمكن إضافة فحص صلاحيات محدد لاحقاً
-router.use(authenticateToken);
+router.use(verifyToken);
 
 // Middleware للتحقق من أن المستخدم هو من نوع "user" وليس "customer"
 router.use((req, res, next) => {
