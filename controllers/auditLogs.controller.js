@@ -1,5 +1,5 @@
 const db = require('../config/database');
-const { asyncHandler } = require('../utils/asyncHandler');
+const asyncHandler = require('../utils/asyncHandler');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 /**
