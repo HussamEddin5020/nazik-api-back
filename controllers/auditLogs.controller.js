@@ -103,7 +103,7 @@ const getAllAuditLogs = asyncHandler(async (req, res) => {
 
   const total = countResult[0].total;
 
-  res.json(successResponse({
+  return successResponse(res, {
     logs,
     pagination: {
       page: parseInt(page),
@@ -111,7 +111,7 @@ const getAllAuditLogs = asyncHandler(async (req, res) => {
       total,
       pages: Math.ceil(total / limit)
     }
-  }));
+  });
 });
 
 /**
@@ -175,7 +175,7 @@ const getTableAuditLogs = asyncHandler(async (req, res) => {
 
   const total = countResult[0].total;
 
-  res.json(successResponse({
+  return successResponse(res, {
     table_name,
     logs,
     pagination: {
@@ -184,7 +184,7 @@ const getTableAuditLogs = asyncHandler(async (req, res) => {
       total,
       pages: Math.ceil(total / limit)
     }
-  }));
+  });
 });
 
 /**
@@ -253,7 +253,7 @@ const getUserAuditLogs = asyncHandler(async (req, res) => {
 
   const total = countResult[0].total;
 
-  res.json(successResponse({
+  return successResponse(res, {
     user_id,
     logs,
     pagination: {
@@ -262,7 +262,7 @@ const getUserAuditLogs = asyncHandler(async (req, res) => {
       total,
       pages: Math.ceil(total / limit)
     }
-  }));
+  });
 });
 
 /**
@@ -339,14 +339,14 @@ const getAuditLogStats = asyncHandler(async (req, res) => {
     GROUP BY success
   `);
 
-  res.json(successResponse({
+  return successResponse(res, {
     period,
     total_logs: totalLogs[0].total,
     action_stats: actionStats,
     table_stats: tableStats,
     user_stats: userStats,
     success_stats: successStats
-  }));
+  });
 });
 
 /**
@@ -363,12 +363,12 @@ const getAuditLogDetails = asyncHandler(async (req, res) => {
   `, [id]);
 
   if (logs.length === 0) {
-    return res.status(404).json(errorResponse('سجل الحدث غير موجود', 404));
+    return errorResponse(res, 'سجل الحدث غير موجود', 404);
   }
 
-  res.json(successResponse({
+  return successResponse(res, {
     log: logs[0]
-  }));
+  });
 });
 
 module.exports = {
