@@ -8,11 +8,23 @@ const {
   getAuditLogDetails
 } = require('../controllers/auditLogs.controller');
 const { authenticateToken } = require('../middleware/auth');
-const { checkPermission } = require('../middleware/permissionMiddleware');
 
-// جميع الـ routes تتطلب مصادقة وصلاحية عرض سجلات الأحداث
+// جميع الـ routes تتطلب مصادقة فقط (للمستخدمين النظاميين)
+// يمكن إضافة فحص صلاحيات محدد لاحقاً
 router.use(authenticateToken);
-router.use(checkPermission('manage_audit'));
+
+// Middleware للتحقق من أن المستخدم هو من نوع "user" وليس "customer"
+router.use((req, res, next) => {
+  if (req.user && req.user.type === 'user') {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: 'ليس لديك صلاحية للوصول إلى سجلات الأحداث',
+    code: 'INSUFFICIENT_PERMISSIONS',
+    statusCode: 403
+  });
+});
 
 /**
  * @route   GET /api/audit-logs
