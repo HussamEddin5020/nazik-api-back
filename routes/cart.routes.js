@@ -35,6 +35,34 @@ router.post('/', cartController.createCart);
  */
 router.put('/:id/availability', cartController.updateCartAvailability);
 
+/**
+ * @route   GET /api/v1/carts/:id/orders
+ * @desc    Get orders in a specific cart with full details
+ * @access  Private (Staff)
+ */
+router.get('/:id/orders', cartController.getCartOrders);
+
+/**
+ * @route   POST /api/v1/carts/orders/:orderId/confirm-purchase
+ * @desc    Confirm purchase for an order
+ * @access  Private (Staff)
+ */
+router.post('/orders/:orderId/confirm-purchase', cartController.confirmOrderPurchase);
+
+/**
+ * @route   GET /api/v1/carts/payment-cards
+ * @desc    Get all payment cards
+ * @access  Private (Staff)
+ */
+router.get('/payment-cards', cartController.getPaymentCards);
+
+/**
+ * @route   GET /api/v1/carts/treasury/balance
+ * @desc    Get treasury balance
+ * @access  Private (Staff)
+ */
+router.get('/treasury/balance', cartController.getTreasuryBalance);
+
 module.exports = router;
 
 
