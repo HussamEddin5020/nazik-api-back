@@ -28,7 +28,15 @@ exports.getAllCarts = asyncHandler(async (req, res) => {
     cart_number: formatCartNumber(cart.id)
   }));
 
-  successResponse(res, formattedCarts);
+  successResponse(res, {
+    carts: formattedCarts,
+    pagination: {
+      page: 1,
+      limit: formattedCarts.length,
+      total: formattedCarts.length,
+      totalPages: 1,
+    },
+  }, 'تم جلب السلات بنجاح');
 });
 
 /**
