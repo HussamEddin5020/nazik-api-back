@@ -31,6 +31,10 @@ const auditRoutes = require('./routes/audit.routes');
 const auditLogsRoutes = require('./routes/auditLogs.routes');
 const underPurchaseRoutes = require('./routes/underPurchase.routes');
 const testRoutes = require('./routes/test.routes');
+const cartsRoutes = require('./routes/carts.routes');
+const paymentCardsRoutes = require('./routes/paymentCards.routes');
+const treasuryRoutes = require('./routes/treasury.routes');
+const orderPurchaseRoutes = require('./routes/orderPurchase.routes');
 
 // Initialize Express app
 const app = express();
@@ -84,6 +88,10 @@ app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/audit-logs', auditLogsRoutes);
 app.use('/api/v1/under-purchase', underPurchaseRoutes);
 app.use('/api/v1/test', testRoutes);
+app.use('/api/v1/carts', cartsRoutes);
+app.use('/api/v1/payment-cards', paymentCardsRoutes);
+app.use('/api/v1/treasury', treasuryRoutes);
+app.use('/api/v1/orders', orderPurchaseRoutes);
 
 // 404 handler
 app.use(notFound);
