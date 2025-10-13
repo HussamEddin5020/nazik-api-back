@@ -4,10 +4,15 @@ const db = require('../config/database');
 // Verify JWT Token
 const verifyToken = async (req, res, next) => {
   try {
+    console.log('🔍 verifyToken - URL:', req.originalUrl);
+    console.log('🔍 verifyToken - Method:', req.method);
+    
     // Get token from header
     const authHeader = req.headers.authorization;
+    console.log('🔍 verifyToken - Auth header exists:', !!authHeader);
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ verifyToken - No valid auth header');
       return res.status(401).json({
         success: false,
         message: 'لا يوجد رمز تفويض. الرجاء تسجيل الدخول'
@@ -57,6 +62,9 @@ const verifyToken = async (req, res, next) => {
       ...users[0],
       permissions
     };
+    
+    console.log('🔍 verifyToken - User authenticated:', req.user.id, req.user.type);
+    console.log('🔍 verifyToken - User permissions count:', permissions.length);
     
     // Set session variables for database triggers
     await db.query('SET @current_user_id = ?', [req.user.id]);
