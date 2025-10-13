@@ -15,9 +15,15 @@ router.use(verifyToken);
 
 // Middleware للتحقق من أن المستخدم هو من نوع "user" وليس "customer"
 router.use((req, res, next) => {
+  console.log('🔍 Audit logs middleware - User type:', req.user?.type);
+  console.log('🔍 Audit logs middleware - User ID:', req.user?.id);
+  
   if (req.user && req.user.type === 'user') {
+    console.log('✅ User has access to audit logs');
     return next();
   }
+  
+  console.log('❌ User denied access to audit logs - type:', req.user?.type);
   return res.status(403).json({
     success: false,
     message: 'ليس لديك صلاحية للوصول إلى سجلات الأحداث',
