@@ -9,7 +9,8 @@ const PERMISSIONS = {
   UPDATE: 4004000003,
   DELETE: 4004000004,
   CONFIRM_DEPOSIT: 4004000005,
-  MANAGE_FX: 4004000006
+  MANAGE_FX: 4004000006,
+  VIEW_AUDIT_LOGS: 4004000007
 };
 
 const PERMISSION_NAMES = {
@@ -18,7 +19,8 @@ const PERMISSION_NAMES = {
   4004000003: 'update',
   4004000004: 'delete',
   4004000005: 'confirm_deposit',
-  4004000006: 'manage_fx'
+  4004000006: 'manage_fx',
+  4004000007: 'view_audit_logs'
 };
 
 const ACTIONS = {
