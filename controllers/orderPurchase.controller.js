@@ -37,12 +37,13 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    // 1. جلب معلومات الطلب
+    // 1. جلب معلومات الطلب من order_invoices
     const [orderResult] = await connection.query(
       `SELECT o.id, o.cart_id, o.position_id, o.purchase_method,
-              od.total as order_total, od.prepaid_value, od.title
+              oi.total_amount as order_total, od.prepaid_value, od.title
        FROM orders o
        INNER JOIN order_details od ON od.order_id = o.id
+       INNER JOIN order_invoices oi ON oi.order_id = o.id
        WHERE o.id = ?`,
       [orderId]
     );
@@ -137,22 +138,18 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
       }
     }
 
-    // 5. إنشاء الفاتورة
-    const invoiceNumber = `INV-${Date.now()}-${orderId}`;
-    
-    const [invoiceResult] = await connection.query(
-      `INSERT INTO order_invoices (
-        invoice_number, item_price, quantity, total_amount, order_id, cart_id,
-        payment_method, cash_amount, card_id, card_paid_amount,
-        discount_amount, expenses_amount, expenses_notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    // 5. تحديث الفاتورة الموجودة بدلاً من إنشاء فاتورة جديدة
+    const [updateResult] = await connection.query(
+      `UPDATE order_invoices SET 
+        payment_method = ?, 
+        cash_amount = ?, 
+        card_id = ?, 
+        card_paid_amount = ?,
+        discount_amount = ?,
+        expenses_amount = ?,
+        expenses_notes = ?
+       WHERE order_id = ?`,
       [
-        invoiceNumber,
-        orderTotal,
-        1, // الكمية
-        amountToPay,
-        orderId,
-        order.cart_id,
         payment_method,
         cash_amount,
         payment_method === 'card' ? card_id : null,
@@ -160,10 +157,18 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
         discountAmount,
         expensesAmount,
         expenses_notes,
+        orderId
       ]
     );
 
-    const invoiceId = invoiceResult.insertId;
+    // جلب invoice_id و invoice_number من الفاتورة المحدثة
+    const [invoiceResult] = await connection.query(
+      'SELECT id, invoice_number FROM order_invoices WHERE order_id = ?',
+      [orderId]
+    );
+
+    const invoiceId = invoiceResult[0].id;
+    const invoiceNumber = invoiceResult[0].invoice_number;
 
     // 6. تحديث الطلب: position_id = 3 و ربط الفاتورة
     await connection.query(
@@ -235,9 +240,10 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
       od.description,
       od.image_url,
       od.prepaid_value,
-      od.original_product_price,
-      od.commission,
-      od.total as order_total,
+      -- الأسعار الحقيقية من order_invoices
+      oi.item_price as original_product_price,
+      oi.item_price as commission, -- نفس السعر مؤقتاً
+      oi.total_amount as order_total,
       od.color,
       od.size,
       op.name as position_name,

@@ -102,9 +102,10 @@ const getCartById = asyncHandler(async (req, res) => {
       od.size,
       od.capacity,
       od.prepaid_value,
-      od.original_product_price,
-      od.commission,
-      od.total as order_total,
+      -- الأسعار الحقيقية من order_invoices
+      oi.item_price as original_product_price,
+      oi.item_price as commission, -- نفس السعر مؤقتاً
+      oi.total_amount as order_total,
       c.first_name as customer_first_name,
       c.last_name as customer_last_name,
       c.email as customer_email,

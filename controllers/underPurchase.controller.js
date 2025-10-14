@@ -248,6 +248,12 @@ exports.addOrderToCart = asyncHandler(async (req, res) => {
       [cart_id, id]
     );
 
+    // تحديث cart_id في order_invoices أيضاً
+    await connection.query(
+      'UPDATE order_invoices SET cart_id = ? WHERE order_id = ?',
+      [cart_id, id]
+    );
+
     // Update cart orders count
     await connection.query(
       'UPDATE cart SET orders_count = orders_count + 1 WHERE id = ?',
