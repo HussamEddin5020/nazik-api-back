@@ -126,7 +126,7 @@ const getCartById = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN order_position op ON op.id = o.position_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    LEFT JOIN order_invoices oi ON oi.order_id = o.id
+    LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
     WHERE o.cart_id = ? AND o.is_archived = 0
     ORDER BY o.created_at DESC`,
     [id]
