@@ -26,13 +26,13 @@ const checkUserType = (req, res, next) => {
 router.use(verifyToken);
 router.use(checkUserType);
 
-// Routes
+// Routes - ترتيب مهم! الـ specific routes قبل الـ parameterized routes
 router.get('/', getAllBoxes);
 router.get('/available-orders', getAvailableOrders);
-router.get('/:id', getBoxById);
 router.post('/', createBox);
+router.get('/:id', getBoxById);
+router.put('/:id/close', closeBox);
 router.put('/:boxId/orders/:orderId', addOrderToBox);
 router.delete('/:boxId/orders/:orderId', removeOrderFromBox);
-router.put('/:id/close', closeBox);
 
 module.exports = router;
