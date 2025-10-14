@@ -106,10 +106,9 @@ const getCartById = asyncHandler(async (req, res) => {
       oi.item_price as original_product_price,
       oi.item_price as commission, -- نفس السعر مؤقتاً
       oi.total_amount as order_total,
-      c.first_name as customer_first_name,
-      c.last_name as customer_last_name,
-      c.email as customer_email,
-      c.phone as customer_phone,
+      u.name as customer_first_name,
+      u.email as customer_email,
+      u.phone as customer_phone,
       op.name as position_name,
       b.name as brand_name,
       oi.id as invoice_id,
@@ -124,6 +123,7 @@ const getCartById = asyncHandler(async (req, res) => {
     FROM orders o
     INNER JOIN order_details od ON od.order_id = o.id
     INNER JOIN customers c ON c.id = o.customer_id
+    INNER JOIN users u ON u.id = c.user_id
     INNER JOIN order_position op ON op.id = o.position_id
     LEFT JOIN brands b ON b.id = o.brand_id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
