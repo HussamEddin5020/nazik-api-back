@@ -201,18 +201,12 @@ const closeBox = asyncHandler(async (req, res) => {
       [id]
     );
 
-    // Update all orders in this box from position_id 3 to 4 (shipping)
-    const [updateResult] = await connection.query(
-      'UPDATE orders SET position_id = 4 WHERE box_id = ? AND position_id = 3',
-      [id]
-    );
-
     await connection.commit();
 
     successResponse(res, {
       box_id: id,
-      orders_updated: updateResult.affectedRows
-    }, `تم إغلاق الصندوق بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الشحن`);
+      orders_updated: 0
+    }, 'تم إغلاق الصندوق بنجاح');
 
   } catch (error) {
     await connection.rollback();
