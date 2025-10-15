@@ -36,6 +36,7 @@ const paymentCardsRoutes = require('./routes/paymentCards.routes');
 const treasuryRoutes = require('./routes/treasury.routes');
 const orderPurchaseRoutes = require('./routes/orderPurchase.routes');
 const boxesRoutes = require('./routes/boxes.routes');
+const shipmentsRoutes = require('./routes/shipments.routes');
 
 // Initialize Express app
 const app = express();
@@ -94,6 +95,7 @@ app.use('/api/v1/payment-cards', paymentCardsRoutes);
 app.use('/api/v1/treasury', treasuryRoutes);
 app.use('/api/v1/orders', orderPurchaseRoutes);
 app.use('/api/v1/boxes', boxesRoutes);
+app.use('/api/v1/shipments', shipmentsRoutes);
 
 // 404 handler
 app.use(notFound);
