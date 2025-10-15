@@ -22,7 +22,7 @@ const userRoutes = require('./routes/user.routes');
 const customerRoutes = require('./routes/customer.routes');
 const orderRoutes = require('./routes/order.routes');
 // const cartRoutes = require('./routes/cart.routes'); // تم استبداله بـ cartsRoutes
-const boxRoutes = require('./routes/box.routes');
+// const boxRoutes = require('./routes/box.routes'); // تم استبداله بـ boxesRoutes
 const shipmentRoutes = require('./routes/shipment.routes');
 const invoiceRoutes = require('./routes/invoice.routes');
 const addressRoutes = require('./routes/address.routes');
@@ -80,7 +80,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/customers', customerRoutes);
 app.use('/api/v1/orders', orderRoutes);
 // app.use('/api/v1/carts', cartRoutes); // تم استبداله بـ cartsRoutes
-app.use('/api/v1/boxes', boxRoutes);
+// app.use('/api/v1/boxes', boxRoutes); // تم استبداله بـ boxesRoutes
 app.use('/api/v1/shipments', shipmentRoutes);
 app.use('/api/v1/invoices', invoiceRoutes);
 app.use('/api/v1/addresses', addressRoutes);
