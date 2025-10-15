@@ -379,7 +379,9 @@ const getShippingCompanies = asyncHandler(async (req, res) => {
  */
 const getDeliveredShipments = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
-  const offset = (page - 1) * limit;
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const offset = (pageNum - 1) * limitNum;
 
   try {
     // Get delivered shipments with their box and order count
@@ -404,7 +406,7 @@ const getDeliveredShipments = asyncHandler(async (req, res) => {
       GROUP BY s.id, s.box_id, s.weight, s.sender_name, s.created_at, s.updated_at, sc.name, ss.status_name, b.box_number
       ORDER BY s.created_at DESC
       LIMIT ? OFFSET ?
-    `, [limit, offset]);
+    `, [limitNum, offset]);
 
     // Get total count for pagination
     const [countResult] = await db.query(`
@@ -414,17 +416,17 @@ const getDeliveredShipments = asyncHandler(async (req, res) => {
     `);
 
     const total = countResult[0].total;
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / limitNum);
 
     successResponse(res, {
       shipments,
       pagination: {
-        current_page: parseInt(page),
-        per_page: parseInt(limit),
+        current_page: pageNum,
+        per_page: limitNum,
         total,
         total_pages: totalPages,
-        has_next: page < totalPages,
-        has_prev: page > 1
+        has_next: pageNum < totalPages,
+        has_prev: pageNum > 1
       }
     }, 'تم جلب الشحنات الواصلة بنجاح');
 
