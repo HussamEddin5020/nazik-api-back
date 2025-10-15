@@ -1,4 +1,4 @@
-const asyncHandler = require('../middleware/asyncHandler');
+const asyncHandler = require('../utils/asyncHandler');
 const { successResponse, errorResponse } = require('../utils/responseHelper');
 const db = require('../config/database');
 const { getPagination } = require('../utils/pagination');
