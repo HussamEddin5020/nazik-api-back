@@ -372,12 +372,195 @@ const getShippingCompanies = asyncHandler(async (req, res) => {
   successResponse(res, { companies }, 'تم جلب شركات الشحن بنجاح');
 });
 
+/**
+ * @desc    Get all delivered shipments (status_id = 3)
+ * @route   GET /api/v1/shipments/delivered
+ * @access  Private (User only)
+ */
+const getDeliveredShipments = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const offset = (page - 1) * limit;
+
+  try {
+    // Get delivered shipments with their box and order count
+    const [shipments] = await db.query(`
+      SELECT 
+        s.id,
+        s.box_id,
+        s.weight,
+        s.sender_name,
+        s.created_at,
+        s.updated_at,
+        sc.name as shipping_company_name,
+        ss.status_name,
+        b.box_number,
+        COUNT(o.id) as orders_count
+      FROM shipments s
+      INNER JOIN shipping_companies sc ON s.shipping_company_id = sc.id
+      INNER JOIN shipment_status ss ON s.status_id = ss.id
+      INNER JOIN box b ON s.box_id = b.id
+      LEFT JOIN orders o ON o.box_id = s.box_id AND o.position_id = 5
+      WHERE s.status_id = 3
+      GROUP BY s.id, s.box_id, s.weight, s.sender_name, s.created_at, s.updated_at, sc.name, ss.status_name, b.box_number
+      ORDER BY s.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [limit, offset]);
+
+    // Get total count for pagination
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total
+      FROM shipments s
+      WHERE s.status_id = 3
+    `);
+
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / limit);
+
+    successResponse(res, {
+      shipments,
+      pagination: {
+        current_page: parseInt(page),
+        per_page: parseInt(limit),
+        total,
+        total_pages: totalPages,
+        has_next: page < totalPages,
+        has_prev: page > 1
+      }
+    }, 'تم جلب الشحنات الواصلة بنجاح');
+
+  } catch (error) {
+    console.error('Error fetching delivered shipments:', error);
+    throw error;
+  }
+});
+
+/**
+ * @desc    Open box - Update all orders in box from position_id 5 to 6
+ * @route   PUT /api/v1/shipments/:id/open-box
+ * @access  Private (User only)
+ */
+const openBox = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
+
+  try {
+    // Check if shipment exists and is delivered
+    const [shipmentResult] = await connection.query(
+      'SELECT id, box_id, status_id FROM shipments WHERE id = ?',
+      [id]
+    );
+
+    if (shipmentResult.length === 0) {
+      await connection.rollback();
+      return errorResponse(res, 'الشحنة غير موجودة', 404);
+    }
+
+    const shipment = shipmentResult[0];
+
+    if (shipment.status_id !== 3) {
+      await connection.rollback();
+      return errorResponse(res, 'الشحنة لم تصل بعد', 400);
+    }
+
+    // Update all orders in the box from position_id 5 to 6
+    const [updateResult] = await connection.query(
+      'UPDATE orders SET position_id = 6 WHERE box_id = ? AND position_id = 5',
+      [shipment.box_id]
+    );
+
+    await connection.commit();
+
+    successResponse(res, {
+      shipmentId: parseInt(id),
+      boxId: shipment.box_id,
+      ordersUpdated: updateResult.affectedRows
+    }, `تم فتح الصندوق بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الفتح`);
+
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
+/**
+ * @desc    Get orders in delivered shipment box (position_id = 5)
+ * @route   GET /api/v1/shipments/:id/box-orders
+ * @access  Private (User only)
+ */
+const getBoxOrders = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Check if shipment exists and is delivered
+    const [shipmentResult] = await db.query(
+      'SELECT id, box_id, status_id FROM shipments WHERE id = ?',
+      [id]
+    );
+
+    if (shipmentResult.length === 0) {
+      return errorResponse(res, 'الشحنة غير موجودة', 404);
+    }
+
+    const shipment = shipmentResult[0];
+
+    if (shipment.status_id !== 3) {
+      return errorResponse(res, 'الشحنة لم تصل بعد', 400);
+    }
+
+    // Get orders in the box with position_id = 5 (delivered but not opened)
+    const [orders] = await db.query(`
+      SELECT 
+        o.id,
+        o.title,
+        o.color,
+        o.size,
+        o.quantity,
+        o.image_url,
+        o.created_at,
+        o.updated_at,
+        od.prepaid_value,
+        oi.item_price,
+        oi.total_amount,
+        oi.commission,
+        b.name as brand_name,
+        u.first_name,
+        u.last_name,
+        u.email as customer_email,
+        u.phone as customer_phone
+      FROM orders o
+      LEFT JOIN order_details od ON o.id = od.order_id
+      LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
+      LEFT JOIN brands b ON o.brand_id = b.id
+      LEFT JOIN users u ON o.customer_id = u.id
+      WHERE o.box_id = ? AND o.position_id = 5
+      ORDER BY o.created_at DESC
+    `, [shipment.box_id]);
+
+    successResponse(res, {
+      shipmentId: parseInt(id),
+      boxId: shipment.box_id,
+      orders
+    }, 'تم جلب طلبات الصندوق بنجاح');
+
+  } catch (error) {
+    console.error('Error fetching box orders:', error);
+    throw error;
+  }
+});
+
 module.exports = {
   getAllShipments,
   getShipmentById,
   createShipment,
   sendShipment,
   deliverShipment,
+  getDeliveredShipments,
+  openBox,
+  getBoxOrders,
   getClosedBoxes,
   getShippingCompanies,
 };

@@ -6,6 +6,9 @@ const {
   createShipment,
   sendShipment,
   deliverShipment,
+  getDeliveredShipments,
+  openBox,
+  getBoxOrders,
   getClosedBoxes,
   getShippingCompanies,
 } = require('../controllers/shipments.controller');
@@ -28,11 +31,14 @@ router.use(checkUserType);
 
 // Routes
 router.get('/', getAllShipments);
+router.get('/delivered', getDeliveredShipments);
 router.get('/closed-boxes', getClosedBoxes);
 router.get('/companies', getShippingCompanies);
 router.get('/:id', getShipmentById);
 router.post('/', createShipment);
 router.put('/:id/send', sendShipment);
 router.put('/:id/deliver', deliverShipment);
+router.put('/:id/open-box', openBox);
+router.get('/:id/box-orders', getBoxOrders);
 
 module.exports = router;
