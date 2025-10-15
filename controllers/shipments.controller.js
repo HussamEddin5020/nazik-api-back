@@ -1,7 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { successResponse, errorResponse } = require('../utils/helpers');
 const db = require('../config/database');
-const { getPagination } = require('../utils/pagination');
 
 /**
  * @desc    Get all shipments with pagination
@@ -10,7 +9,7 @@ const { getPagination } = require('../utils/pagination');
  */
 const getAllShipments = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status_id } = req.query;
-  const { offset } = getPagination(page, limit);
+  const offset = (page - 1) * limit;
 
   let whereClause = '';
   const queryParams = [];
