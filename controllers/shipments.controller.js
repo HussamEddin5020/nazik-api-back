@@ -40,6 +40,8 @@ const getAllShipments = asyncHandler(async (req, res) => {
     [...queryParams, parseInt(limit), offset]
   );
 
+  console.log('🚀 Shipments query result:', shipments);
+
   // Get total count
   const [countResult] = await db.query(
     `SELECT COUNT(*) as total FROM shipments s ${whereClause}`,
@@ -49,7 +51,7 @@ const getAllShipments = asyncHandler(async (req, res) => {
   const total = countResult[0].total;
   const totalPages = Math.ceil(total / limit);
 
-  successResponse(res, {
+  const responseData = {
     shipments,
     pagination: {
       page: parseInt(page),
@@ -59,7 +61,11 @@ const getAllShipments = asyncHandler(async (req, res) => {
       hasNext: page < totalPages,
       hasPrev: page > 1
     }
-  }, 'تم جلب الشحنات بنجاح');
+  };
+
+  console.log('🚀 Shipments response data:', JSON.stringify(responseData, null, 2));
+
+  successResponse(res, responseData, 'تم جلب الشحنات بنجاح');
 });
 
 /**
