@@ -391,17 +391,17 @@ const getDeliveredShipments = asyncHandler(async (req, res) => {
         s.box_id,
         s.weight,
         s.sender_name,
-        sc.name as shipping_company_name,
+        sc.company_name as shipping_company_name,
         ss.status_name,
         b.box_number,
         COUNT(o.id) as orders_count
       FROM shipments s
-      INNER JOIN shipping_companies sc ON s.shipping_company_id = sc.id
+      INNER JOIN shipping_companies sc ON s.company_id = sc.id
       INNER JOIN shipment_status ss ON s.status_id = ss.id
       INNER JOIN box b ON s.box_id = b.id
       LEFT JOIN orders o ON o.box_id = s.box_id AND o.position_id = 5
       WHERE s.status_id = 3
-      GROUP BY s.id, s.box_id, s.weight, s.sender_name, sc.name, ss.status_name, b.box_number
+      GROUP BY s.id, s.box_id, s.weight, s.sender_name, sc.company_name, ss.status_name, b.box_number
       ORDER BY s.id DESC
       LIMIT ? OFFSET ?
     `, [limitNum, offset]);
