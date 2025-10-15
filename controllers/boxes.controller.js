@@ -27,13 +27,12 @@ const getAllBoxes = asyncHandler(async (req, res) => {
       b.number,
       b.orders_count,
       b.is_available,
-      b.created_at,
       COUNT(o.id) as actual_orders_count
     FROM box b
     LEFT JOIN orders o ON o.box_id = b.id AND o.position_id IN (3, 4)
     ${whereClause}
-    GROUP BY b.id, b.number, b.orders_count, b.is_available, b.created_at
-    ORDER BY b.created_at DESC
+    GROUP BY b.id, b.number, b.orders_count, b.is_available
+    ORDER BY b.id DESC
     LIMIT ? OFFSET ?`,
     [...queryParams, parseInt(limit), offset]
   );
