@@ -27,12 +27,13 @@ const getAllBoxes = asyncHandler(async (req, res) => {
       b.number,
       b.orders_count,
       b.is_available,
+      b.created_at,
       COUNT(o.id) as actual_orders_count
     FROM box b
     LEFT JOIN orders o ON o.box_id = b.id AND o.position_id IN (3, 4)
     ${whereClause}
-    GROUP BY b.id, b.number, b.orders_count, b.is_available
-    ORDER BY b.id DESC
+    GROUP BY b.id, b.number, b.orders_count, b.is_available, b.created_at
+    ORDER BY b.created_at DESC
     LIMIT ? OFFSET ?`,
     [...queryParams, parseInt(limit), offset]
   );
@@ -113,7 +114,8 @@ const getBoxById = asyncHandler(async (req, res) => {
     INNER JOIN order_position op ON op.id = o.position_id
     LEFT JOIN order_details od ON od.order_id = o.id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
-    INNER JOIN users u ON u.id = o.customer_id
+    INNER JOIN customers c ON c.id = o.customer_id
+    INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
     WHERE o.box_id = ? AND o.position_id IN (3, 4)
     ORDER BY o.created_at DESC`,
@@ -254,7 +256,8 @@ const getAvailableOrders = asyncHandler(async (req, res) => {
     INNER JOIN order_position op ON op.id = o.position_id
     LEFT JOIN order_details od ON od.order_id = o.id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
-    INNER JOIN users u ON u.id = o.customer_id
+    INNER JOIN customers c ON c.id = o.customer_id
+    INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
     WHERE o.position_id = 3 AND (o.box_id IS NULL OR o.box_id = 0)
     ORDER BY o.created_at DESC
