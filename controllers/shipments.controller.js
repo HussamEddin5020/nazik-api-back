@@ -278,6 +278,64 @@ const sendShipment = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Mark shipment as delivered (change status to "وصلت" and update orders position_id to 5)
+ * @route   PUT /api/v1/shipments/:id/deliver
+ * @access  Private (User only)
+ */
+const deliverShipment = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
+
+  try {
+    // Check if shipment exists and is in shipping status
+    const [shipmentResult] = await connection.query(
+      'SELECT id, box_id, status_id FROM shipments WHERE id = ?',
+      [id]
+    );
+
+    if (shipmentResult.length === 0) {
+      await connection.rollback();
+      return errorResponse(res, 'الشحنة غير موجودة', 404);
+    }
+
+    const shipment = shipmentResult[0];
+
+    if (shipment.status_id !== 2) {
+      await connection.rollback();
+      return errorResponse(res, 'الشحنة ليست في حالة الشحن', 400);
+    }
+
+    // Update shipment status to delivered (3)
+    await connection.query(
+      'UPDATE shipments SET status_id = 3 WHERE id = ?',
+      [id]
+    );
+
+    // Update all orders in the box to delivered status (position_id = 5)
+    const [updateResult] = await connection.query(
+      'UPDATE orders SET position_id = 5 WHERE box_id = ? AND position_id = 4',
+      [shipment.box_id]
+    );
+
+    await connection.commit();
+
+    successResponse(res, {
+      shipmentId: parseInt(id),
+      boxId: shipment.box_id,
+      ordersUpdated: updateResult.affectedRows
+    }, `تم تأكيد وصول الشحنة بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الوصول`);
+
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
+/**
  * @desc    Get closed boxes (available for shipment)
  * @route   GET /api/v1/shipments/closed-boxes
  * @access  Private (User only)
@@ -319,6 +377,7 @@ module.exports = {
   getShipmentById,
   createShipment,
   sendShipment,
+  deliverShipment,
   getClosedBoxes,
   getShippingCompanies,
 };

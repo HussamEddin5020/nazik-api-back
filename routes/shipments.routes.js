@@ -5,6 +5,7 @@ const {
   getShipmentById,
   createShipment,
   sendShipment,
+  deliverShipment,
   getClosedBoxes,
   getShippingCompanies,
 } = require('../controllers/shipments.controller');
@@ -32,5 +33,6 @@ router.get('/companies', getShippingCompanies);
 router.get('/:id', getShipmentById);
 router.post('/', createShipment);
 router.put('/:id/send', sendShipment);
+router.put('/:id/deliver', deliverShipment);
 
 module.exports = router;
