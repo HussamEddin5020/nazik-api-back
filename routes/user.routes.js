@@ -8,11 +8,32 @@ router.use(verifyToken);
 router.use(isStaff);
 
 /**
+ * @route   GET /api/v1/users/permissions/list
+ * @desc    Get all permissions
+ * @access  Private (Staff)
+ */
+router.get('/permissions/list', userController.getAllPermissions);
+
+/**
+ * @route   GET /api/v1/users/actions/list
+ * @desc    Get all actions
+ * @access  Private (Staff)
+ */
+router.get('/actions/list', userController.getAllActions);
+
+/**
  * @route   GET /api/v1/users
  * @desc    Get all users
  * @access  Private (Staff)
  */
 router.get('/', userController.getAllUsers);
+
+/**
+ * @route   POST /api/v1/users
+ * @desc    Create new user
+ * @access  Private (Staff)
+ */
+router.post('/', userController.createUser);
 
 /**
  * @route   GET /api/v1/users/:id

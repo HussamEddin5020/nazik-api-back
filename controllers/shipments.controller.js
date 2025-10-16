@@ -464,13 +464,60 @@ const openBox = asyncHandler(async (req, res) => {
       [shipment.box_id]
     );
 
+    // Get all collections that have orders in this box
+    const [collectionsResult] = await connection.query(
+      `SELECT DISTINCT o.collection_id 
+       FROM orders o 
+       WHERE o.box_id = ? AND o.collection_id IS NOT NULL`,
+      [shipment.box_id]
+    );
+
+    let collectionsUpdated = 0;
+
+    // Update collection status for each collection
+    for (const collection of collectionsResult) {
+      const collectionId = collection.collection_id;
+      
+      // Check if all orders in this collection have position_id = 6 (opened)
+      const [allOrdersResult] = await connection.query(
+        `SELECT COUNT(*) as total_orders,
+                SUM(CASE WHEN position_id = 6 THEN 1 ELSE 0 END) as opened_orders
+         FROM orders 
+         WHERE collection_id = ?`,
+        [collectionId]
+      );
+
+      const { total_orders, opened_orders } = allOrdersResult[0];
+      
+      let newStatus;
+      if (opened_orders === total_orders) {
+        // All orders are opened (position_id = 6) - Collection fully received
+        newStatus = 3;
+      } else if (opened_orders > 0) {
+        // Some orders are opened - Collection partially received
+        newStatus = 2;
+      } else {
+        // No orders opened yet - Collection still under process
+        newStatus = 1;
+      }
+
+      // Update collection status
+      await connection.query(
+        'UPDATE collections SET status = ? WHERE id = ?',
+        [newStatus, collectionId]
+      );
+      
+      collectionsUpdated++;
+    }
+
     await connection.commit();
 
     successResponse(res, {
       shipmentId: parseInt(id),
       boxId: shipment.box_id,
-      ordersUpdated: updateResult.affectedRows
-    }, `تم فتح الصندوق بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الفتح`);
+      ordersUpdated: updateResult.affectedRows,
+      collectionsUpdated: collectionsUpdated
+    }, `تم فتح الصندوق بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الفتح و ${collectionsUpdated} مجموعة`);
 
   } catch (error) {
     await connection.rollback();

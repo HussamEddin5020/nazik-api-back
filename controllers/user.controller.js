@@ -196,6 +196,74 @@ exports.getUserPermissions = asyncHandler(async (req, res) => {
   successResponse(res, permissions);
 });
 
+/**
+ * @desc    Get all permissions
+ * @route   GET /api/v1/users/permissions/list
+ * @access  Private (Staff)
+ */
+exports.getAllPermissions = asyncHandler(async (req, res) => {
+  const [permissions] = await db.query(
+    'SELECT id, name, description FROM permissions ORDER BY id'
+  );
+
+  successResponse(res, { permissions });
+});
+
+/**
+ * @desc    Get all actions
+ * @route   GET /api/v1/users/actions/list
+ * @access  Private (Staff)
+ */
+exports.getAllActions = asyncHandler(async (req, res) => {
+  const [actions] = await db.query(
+    'SELECT id, name, description FROM actions ORDER BY id'
+  );
+
+  successResponse(res, { actions });
+});
+
+/**
+ * @desc    Create new user
+ * @route   POST /api/v1/users
+ * @access  Private (Staff)
+ */
+exports.createUser = asyncHandler(async (req, res) => {
+  const { name, email, phone, password, type = 'user' } = req.body;
+
+  // Validation
+  if (!name || !password) {
+    return errorResponse(res, 'الاسم وكلمة المرور مطلوبان', 400);
+  }
+
+  if (!email && !phone) {
+    return errorResponse(res, 'البريد الإلكتروني أو رقم الهاتف مطلوب', 400);
+  }
+
+  // Check if user exists
+  const [existingUser] = await db.query(
+    'SELECT id FROM users WHERE email = ? OR phone = ?',
+    [email || null, phone || null]
+  );
+
+  if (existingUser.length > 0) {
+    return errorResponse(res, 'المستخدم موجود بالفعل', 400);
+  }
+
+  // Hash password
+  const passwordHash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS) || 10);
+
+  // Create user
+  const [result] = await db.query(
+    `INSERT INTO users (name, email, phone, password_hash, type, status) 
+     VALUES (?, ?, ?, ?, ?, 'active')`,
+    [name, email || null, phone || null, passwordHash, type]
+  );
+
+  const [newUser] = await db.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+
+  successResponse(res, sanitizeUser(newUser[0]), 'تم إنشاء المستخدم بنجاح', 201);
+});
+
 module.exports = exports;
 
 
