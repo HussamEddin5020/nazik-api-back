@@ -379,59 +379,50 @@ const getShippingCompanies = asyncHandler(async (req, res) => {
  */
 const getDeliveredShipments = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
-  const pageNum = parseInt(page);
-  const limitNum = parseInt(limit);
-  const offset = (pageNum - 1) * limitNum;
+  const offset = (page - 1) * limit;
 
-  try {
-    // Get delivered shipments with their box and order count
-    const [shipments] = await db.query(`
-      SELECT 
-        s.id,
-        s.box_id,
-        s.weight,
-        s.sender_name,
-        sc.company_name as shipping_company_name,
-        ss.name as status_name,
-        b.number as box_number,
-        COUNT(o.id) as orders_count
-      FROM shipments s
-      LEFT JOIN shipping_companies sc ON sc.id = s.company_id
-      LEFT JOIN shipment_status ss ON ss.id = s.status_id
-      LEFT JOIN box b ON b.id = s.box_id
-      LEFT JOIN orders o ON o.box_id = s.box_id AND o.position_id = 5
-      WHERE s.status_id = 3
-      GROUP BY s.id, s.box_id, s.weight, s.sender_name, sc.company_name, ss.name, b.number
-      ORDER BY s.id DESC
-      LIMIT ? OFFSET ?
-    `, [limitNum, offset]);
+  const [shipments] = await db.query(
+    `SELECT 
+      s.id,
+      s.box_id,
+      s.company_id,
+      s.sender_name,
+      s.weight,
+      s.status_id,
+      b.number as box_number,
+      sc.company_name,
+      ss.name as status_name
+    FROM shipments s
+    LEFT JOIN box b ON b.id = s.box_id
+    LEFT JOIN shipping_companies sc ON sc.id = s.company_id
+    LEFT JOIN shipment_status ss ON ss.id = s.status_id
+    WHERE s.status_id = 3
+    ORDER BY s.id DESC
+    LIMIT ? OFFSET ?`,
+    [parseInt(limit), offset]
+  );
 
-    // Get total count for pagination
-    const [countResult] = await db.query(`
-      SELECT COUNT(*) as total
-      FROM shipments s
-      WHERE s.status_id = 3
-    `);
+  // Get total count
+  const [countResult] = await db.query(
+    `SELECT COUNT(*) as total FROM shipments s WHERE s.status_id = 3`
+  );
 
-    const total = countResult[0].total;
-    const totalPages = Math.ceil(total / limitNum);
+  const total = countResult[0].total;
+  const totalPages = Math.ceil(total / limit);
 
-    successResponse(res, {
-      shipments,
-      pagination: {
-        current_page: pageNum,
-        per_page: limitNum,
-        total,
-        total_pages: totalPages,
-        has_next: pageNum < totalPages,
-        has_prev: pageNum > 1
-      }
-    }, 'تم جلب الشحنات الواصلة بنجاح');
+  const responseData = {
+    shipments,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    }
+  };
 
-  } catch (error) {
-    console.error('Error fetching delivered shipments:', error);
-    throw error;
-  }
+  successResponse(res, responseData, 'تم جلب الشحنات الواصلة بنجاح');
 });
 
 /**
@@ -494,62 +485,71 @@ const openBox = asyncHandler(async (req, res) => {
 const getBoxOrders = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  try {
-    // Check if shipment exists and is delivered
-    const [shipmentResult] = await db.query(
-      'SELECT id, box_id, status_id FROM shipments WHERE id = ?',
-      [id]
-    );
+  // Get shipment details first
+  const [shipmentResult] = await db.query(
+    `SELECT 
+      s.id,
+      s.box_id,
+      s.company_id,
+      s.sender_name,
+      s.weight,
+      s.status_id,
+      b.number as box_number,
+      sc.company_name,
+      ss.name as status_name
+    FROM shipments s
+    LEFT JOIN box b ON b.id = s.box_id
+    LEFT JOIN shipping_companies sc ON sc.id = s.company_id
+    LEFT JOIN shipment_status ss ON ss.id = s.status_id
+    WHERE s.id = ? AND s.status_id = 3`,
+    [id]
+  );
 
-    if (shipmentResult.length === 0) {
-      return errorResponse(res, 'الشحنة غير موجودة', 404);
-    }
-
-    const shipment = shipmentResult[0];
-
-    if (shipment.status_id !== 3) {
-      return errorResponse(res, 'الشحنة لم تصل بعد', 400);
-    }
-
-    // Get orders in the box with position_id = 5 (delivered but not opened)
-    const [orders] = await db.query(`
-      SELECT 
-        o.id,
-        o.title,
-        o.color,
-        o.size,
-        o.quantity,
-        o.image_url,
-        o.created_at,
-        o.updated_at,
-        od.prepaid_value,
-        oi.item_price,
-        oi.total_amount,
-        oi.commission,
-        b.name as brand_name,
-        u.first_name,
-        u.last_name,
-        u.email as customer_email,
-        u.phone as customer_phone
-      FROM orders o
-      LEFT JOIN order_details od ON o.id = od.order_id
-      LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
-      LEFT JOIN brands b ON o.brand_id = b.id
-      LEFT JOIN users u ON o.customer_id = u.id
-      WHERE o.box_id = ? AND o.position_id = 5
-      ORDER BY o.created_at DESC
-    `, [shipment.box_id]);
-
-    successResponse(res, {
-      shipmentId: parseInt(id),
-      boxId: shipment.box_id,
-      orders
-    }, 'تم جلب طلبات الصندوق بنجاح');
-
-  } catch (error) {
-    console.error('Error fetching box orders:', error);
-    throw error;
+  if (shipmentResult.length === 0) {
+    return errorResponse(res, 'الشحنة غير موجودة أو لم تصل بعد', 404);
   }
+
+  const shipment = shipmentResult[0];
+
+  // Get orders in the box with position_id = 5
+  const [ordersResult] = await db.query(
+    `SELECT 
+      o.id,
+      o.position_id,
+      op.name as position_name,
+      od.title,
+      od.description,
+      od.image_url,
+      od.color,
+      od.size,
+      oi.quantity,
+      oi.item_price,
+      oi.total_amount,
+      od.prepaid_value,
+      u.name as customer_name,
+      u.email as customer_email,
+      u.phone as customer_phone,
+      b.name as brand_name,
+      o.created_at,
+      o.updated_at
+    FROM orders o
+    INNER JOIN order_position op ON op.id = o.position_id
+    LEFT JOIN order_details od ON od.order_id = o.id
+    LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
+    INNER JOIN customers c ON c.id = o.customer_id
+    INNER JOIN users u ON u.id = c.user_id
+    LEFT JOIN brands b ON b.id = o.brand_id
+    WHERE o.box_id = ? AND o.position_id = 5 AND o.is_archived = 0
+    ORDER BY o.created_at DESC`,
+    [shipment.box_id]
+  );
+
+  const shipmentData = {
+    ...shipment,
+    orders: ordersResult
+  };
+
+  successResponse(res, shipmentData, 'تم جلب طلبات الصندوق بنجاح');
 });
 
 module.exports = {
