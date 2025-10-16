@@ -36,6 +36,13 @@ router.get('/', userController.getAllUsers);
 router.post('/', userController.createUser);
 
 /**
+ * @route   GET /api/v1/users/:id/permissions
+ * @desc    Get user permissions
+ * @access  Private (Staff)
+ */
+router.get('/:id/permissions', userController.getUserPermissions);
+
+/**
  * @route   GET /api/v1/users/:id
  * @desc    Get user by ID
  * @access  Private (Staff)
@@ -62,13 +69,6 @@ router.delete('/:id', userController.deleteUser);
  * @access  Private (Staff)
  */
 router.put('/:id/permissions', userController.updateUserPermissions);
-
-/**
- * @route   GET /api/v1/users/:id/permissions
- * @desc    Get user permissions
- * @access  Private (Staff)
- */
-router.get('/:id/permissions', userController.getUserPermissions);
 
 module.exports = router;
 
