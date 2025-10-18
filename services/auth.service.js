@@ -97,13 +97,18 @@ class AuthService {
       if (users.length === 0) return null;
 
       // Get permissions
+      // Get user permissions using new system
       const [permissions] = await db.query(
-        `SELECT p.id as permission_id, p.name as permission_name,
-                a.id as action_id, a.name as action_name
-         FROM user_permissions up
-         JOIN permissions p ON up.permission_id = p.id
-         JOIN actions a ON up.action_id = a.id
-         WHERE up.user_id = ?`,
+        `SELECT 
+          np.id as permission_id,
+          np.name as permission_name,
+          np.module,
+          np.action,
+          r.name as role_name
+         FROM v_user_permissions vup
+         JOIN new_permissions np ON vup.permission_id = np.id
+         JOIN roles r ON vup.role_name = r.name
+         WHERE vup.user_id = ?`,
         [userId]
       );
 

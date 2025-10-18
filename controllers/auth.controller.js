@@ -137,13 +137,11 @@ exports.registerUser = asyncHandler(async (req, res) => {
 
     const userId = userResult.insertId;
 
-    // Insert permissions if provided
+    // Insert permissions if provided (using new system)
     if (permissions.length > 0) {
-      const permissionValues = permissions.map(p => [userId, p.action_id, p.permission_id]);
-      await connection.query(
-        `INSERT INTO user_permissions (user_id, action_id, permission_id) VALUES ?`,
-        [permissionValues]
-      );
+      // For now, skip permissions insertion as we're using roles system
+      // TODO: Implement role assignment during registration
+      console.log('Permissions provided but using new roles system - skipping direct permission assignment');
     }
 
     // Log registration

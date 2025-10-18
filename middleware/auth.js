@@ -39,19 +39,20 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Get user permissions if user is staff
+    // Get user permissions if user is staff (النظام الجديد)
     let permissions = [];
     if (users[0].type === 'user') {
       const [userPermissions] = await db.query(
         `SELECT 
-          p.id as permission_id,
-          p.name as permission_name,
-          a.id as action_id,
-          a.name as action_name
-         FROM user_permissions up
-         JOIN permissions p ON up.permission_id = p.id
-         JOIN actions a ON up.action_id = a.id
-         WHERE up.user_id = ?`,
+          np.id as permission_id,
+          np.name as permission_name,
+          np.module,
+          np.action,
+          r.name as role_name
+         FROM v_user_permissions vup
+         JOIN new_permissions np ON vup.permission_id = np.id
+         JOIN roles r ON vup.role_name = r.name
+         WHERE vup.user_id = ?`,
         [decoded.userId]
       );
       permissions = userPermissions;
@@ -112,8 +113,8 @@ const isCustomer = (req, res, next) => {
   next();
 };
 
-// Check specific permission
-const hasPermission = (permissionName, actionName) => {
+// Check specific permission (النظام الجديد)
+const hasPermission = (permissionName) => {
   return async (req, res, next) => {
     try {
       // Customers have limited permissions
@@ -121,22 +122,52 @@ const hasPermission = (permissionName, actionName) => {
         return next();
       }
 
-      // Check if user has permission
+      // Check if user has permission using new system
       const [permissions] = await db.query(
         `SELECT COUNT(*) as count
-         FROM user_permissions up
-         JOIN permissions p ON up.permission_id = p.id
-         JOIN actions a ON up.action_id = a.id
-         WHERE up.user_id = ? 
-         AND p.name = ? 
-         AND a.name = ?`,
-        [req.user.id, permissionName, actionName]
+         FROM v_user_permissions
+         WHERE user_id = ? 
+         AND permission_name = ?`,
+        [req.user.id, permissionName]
       );
 
       if (permissions[0].count === 0) {
         return res.status(403).json({
           success: false,
-          message: `ليس لديك صلاحية ${actionName} على ${permissionName}`
+          message: `ليس لديك صلاحية ${permissionName}`
+        });
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+// Check if user has any of the specified permissions
+const hasAnyPermission = (permissionNames) => {
+  return async (req, res, next) => {
+    try {
+      // Customers have limited permissions
+      if (req.user.type === 'customer') {
+        return next();
+      }
+
+      // Check if user has any of the specified permissions
+      const placeholders = permissionNames.map(() => '?').join(',');
+      const [permissions] = await db.query(
+        `SELECT COUNT(*) as count
+         FROM v_user_permissions
+         WHERE user_id = ? 
+         AND permission_name IN (${placeholders})`,
+        [req.user.id, ...permissionNames]
+      );
+
+      if (permissions[0].count === 0) {
+        return res.status(403).json({
+          success: false,
+          message: `ليس لديك أي من الصلاحيات المطلوبة: ${permissionNames.join(', ')}`
         });
       }
 
@@ -151,7 +182,8 @@ module.exports = {
   verifyToken,
   isStaff,
   isCustomer,
-  hasPermission
+  hasPermission,
+  hasAnyPermission
 };
 
 

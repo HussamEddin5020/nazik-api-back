@@ -1,39 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
-const { verifyToken, isStaff } = require('../middleware/auth');
+const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
 
 // All routes require authentication and staff role
 router.use(verifyToken);
 router.use(isStaff);
 
-/**
- * @route   GET /api/v1/users/permissions/list
- * @desc    Get all permissions
- * @access  Private (Staff)
- */
-router.get('/permissions/list', userController.getAllPermissions);
-
-/**
- * @route   GET /api/v1/users/actions/list
- * @desc    Get all actions
- * @access  Private (Staff)
- */
-router.get('/actions/list', userController.getAllActions);
+// تم إزالة routes النظام القديم للصلاحيات
+// استخدم /api/v1/roles/permissions/all بدلاً من ذلك
 
 /**
  * @route   GET /api/v1/users
  * @desc    Get all users
- * @access  Private (Staff)
+ * @access  Private (Staff with view_users permission)
  */
-router.get('/', userController.getAllUsers);
+router.get('/', hasPermission('view_users'), userController.getAllUsers);
 
 /**
  * @route   POST /api/v1/users
  * @desc    Create new user
- * @access  Private (Staff)
+ * @access  Private (Staff with create_users permission)
  */
-router.post('/', userController.createUser);
+router.post('/', hasPermission('create_users'), userController.createUser);
 
 /**
  * @route   GET /api/v1/users/:id/permissions

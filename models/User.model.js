@@ -66,16 +66,20 @@ class User {
   }
 
   /**
-   * Get user permissions
+   * Get user permissions (النظام الجديد)
    */
   static async getPermissions(userId) {
     const [permissions] = await db.query(
-      `SELECT p.id as permission_id, p.name as permission_name,
-              a.id as action_id, a.name as action_name
-       FROM user_permissions up
-       JOIN permissions p ON up.permission_id = p.id
-       JOIN actions a ON up.action_id = a.id
-       WHERE up.user_id = ?`,
+      `SELECT 
+        np.id as permission_id,
+        np.name as permission_name,
+        np.module,
+        np.action,
+        r.name as role_name
+       FROM v_user_permissions vup
+       JOIN new_permissions np ON vup.permission_id = np.id
+       JOIN roles r ON vup.role_name = r.name
+       WHERE vup.user_id = ?`,
       [userId]
     );
 
@@ -83,16 +87,29 @@ class User {
   }
 
   /**
-   * Check if user has permission
+   * Check if user has permission (النظام الجديد)
    */
-  static async hasPermission(userId, permissionName, actionName) {
+  static async hasPermission(userId, permissionName) {
     const [result] = await db.query(
       `SELECT COUNT(*) as count
-       FROM user_permissions up
-       JOIN permissions p ON up.permission_id = p.id
-       JOIN actions a ON up.action_id = a.id
-       WHERE up.user_id = ? AND p.name = ? AND a.name = ?`,
-      [userId, permissionName, actionName]
+       FROM v_user_permissions
+       WHERE user_id = ? AND permission_name = ?`,
+      [userId, permissionName]
+    );
+
+    return result[0].count > 0;
+  }
+
+  /**
+   * Check if user has any of the specified permissions
+   */
+  static async hasAnyPermission(userId, permissionNames) {
+    const placeholders = permissionNames.map(() => '?').join(',');
+    const [result] = await db.query(
+      `SELECT COUNT(*) as count
+       FROM v_user_permissions
+       WHERE user_id = ? AND permission_name IN (${placeholders})`,
+      [userId, ...permissionNames]
     );
 
     return result[0].count > 0;

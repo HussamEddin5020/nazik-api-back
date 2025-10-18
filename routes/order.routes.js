@@ -9,9 +9,9 @@ router.use(verifyToken);
 /**
  * @route   GET /api/v1/orders
  * @desc    Get all orders with filters
- * @access  Private
+ * @access  Private (Staff with view_orders permission)
  */
-router.get('/', orderController.getAllOrders);
+router.get('/', hasPermission('view_orders'), orderController.getAllOrders);
 
 /**
  * @route   GET /api/v1/orders/my-orders

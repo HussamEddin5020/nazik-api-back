@@ -151,15 +151,14 @@ exports.updateUserPermissions = asyncHandler(async (req, res) => {
     await connection.beginTransaction();
 
     // Delete existing permissions
-    await connection.query('DELETE FROM user_permissions WHERE user_id = ?', [id]);
+    // Delete user permissions (using new system - skip for now)
+    // await connection.query('DELETE FROM user_permissions WHERE user_id = ?', [id]);
+    console.log('Using new roles system - skipping direct permission deletion');
 
-    // Insert new permissions
+    // Insert new permissions (using new system - skip for now)
     if (permissions && permissions.length > 0) {
-      const values = permissions.map(p => [id, p.action_id, p.permission_id]);
-      await connection.query(
-        'INSERT INTO user_permissions (user_id, action_id, permission_id) VALUES ?',
-        [values]
-      );
+      // TODO: Implement role assignment instead of direct permissions
+      console.log('Using new roles system - skipping direct permission assignment');
     }
 
     await connection.commit();
@@ -183,13 +182,16 @@ exports.getUserPermissions = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const [permissions] = await db.query(
-    `SELECT up.user_id, up.action_id, up.permission_id,
-            p.name as permission_name, p.description as permission_description,
-            a.name as action_name, a.description as action_description
-     FROM user_permissions up
-     JOIN permissions p ON up.permission_id = p.id
-     JOIN actions a ON up.action_id = a.id
-     WHERE up.user_id = ?`,
+    `SELECT 
+      np.id as permission_id,
+      np.name as permission_name,
+      np.module,
+      np.action,
+      r.name as role_name
+     FROM v_user_permissions vup
+     JOIN new_permissions np ON vup.permission_id = np.id
+     JOIN roles r ON vup.role_name = r.name
+     WHERE vup.user_id = ?`,
     [id]
   );
 

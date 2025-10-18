@@ -1,8 +1,96 @@
 /**
- * Permission Constants
- * These match the permissions table in the database
+ * Permission Constants - النظام الجديد
+ * These match the new_permissions table in the database
  */
 
+const NEW_PERMISSIONS = {
+  // إدارة المستخدمين
+  MANAGE_USERS: 'manage_users',
+  VIEW_USERS: 'view_users',
+  CREATE_USERS: 'create_users',
+  UPDATE_USERS: 'update_users',
+  DELETE_USERS: 'delete_users',
+
+  // إدارة الطلبات
+  MANAGE_ORDERS: 'manage_orders',
+  VIEW_ORDERS: 'view_orders',
+  CREATE_ORDERS: 'create_orders',
+  UPDATE_ORDERS: 'update_orders',
+  DELETE_ORDERS: 'delete_orders',
+  UPDATE_ORDER_STATUS: 'update_order_status',
+
+  // إدارة السلات
+  MANAGE_CARTS: 'manage_carts',
+  VIEW_CARTS: 'view_carts',
+  CREATE_CARTS: 'create_carts',
+  UPDATE_CARTS: 'update_carts',
+  DELETE_CARTS: 'delete_carts',
+
+  // إدارة الصناديق
+  MANAGE_BOXES: 'manage_boxes',
+  VIEW_BOXES: 'view_boxes',
+  CREATE_BOXES: 'create_boxes',
+  UPDATE_BOXES: 'update_boxes',
+  DELETE_BOXES: 'delete_boxes',
+
+  // إدارة الشحنات
+  MANAGE_SHIPMENTS: 'manage_shipments',
+  VIEW_SHIPMENTS: 'view_shipments',
+  CREATE_SHIPMENTS: 'create_shipments',
+  UPDATE_SHIPMENTS: 'update_shipments',
+  DELETE_SHIPMENTS: 'delete_shipments',
+
+  // إدارة المالية
+  MANAGE_FINANCE: 'manage_finance',
+  VIEW_FINANCE: 'view_finance',
+  MANAGE_INVOICES: 'manage_invoices',
+  MANAGE_PAYMENTS: 'manage_payments',
+
+  // التقارير
+  VIEW_REPORTS: 'view_reports',
+  VIEW_TURKEY_REPORTS: 'view_turkey_reports',
+  VIEW_SHIPMENT_REPORTS: 'view_shipment_reports',
+  VIEW_FINANCIAL_REPORTS: 'view_financial_reports',
+
+  // سجلات التدقيق
+  VIEW_AUDIT_LOGS: 'view_audit_logs',
+
+  // إدارة الصلاحيات
+  MANAGE_PERMISSIONS: 'manage_permissions',
+  VIEW_PERMISSIONS: 'view_permissions'
+};
+
+const PERMISSION_MODULES = {
+  USERS: 'users',
+  ORDERS: 'orders',
+  CARTS: 'carts',
+  BOXES: 'boxes',
+  SHIPMENTS: 'shipments',
+  FINANCE: 'finance',
+  REPORTS: 'reports',
+  AUDIT: 'audit',
+  PERMISSIONS: 'permissions'
+};
+
+const PERMISSION_ACTIONS = {
+  ALL: 'all',
+  VIEW: 'view',
+  CREATE: 'create',
+  UPDATE: 'update',
+  DELETE: 'delete'
+};
+
+const ROLES = {
+  SYSTEM_ADMIN: 'مدير النظام',
+  ORDERS_MANAGER: 'مدير الطلبات',
+  TURKEY_RECEIVING: 'موظف استلام تركيا',
+  SHIPMENTS_STAFF: 'موظف الشحنات',
+  REPORTS_STAFF: 'موظف التقارير',
+  GENERAL_SUPERVISOR: 'مشرف عام',
+  FINANCE_STAFF: 'موظف المالية'
+};
+
+// النظام القديم (للتوافق مع الإصدارات السابقة)
 const PERMISSIONS = {
   VIEW: 4004000001,
   ADD: 4004000002,
@@ -43,6 +131,13 @@ const ACTIONS = {
 };
 
 module.exports = {
+  // النظام الجديد
+  NEW_PERMISSIONS,
+  PERMISSION_MODULES,
+  PERMISSION_ACTIONS,
+  ROLES,
+  
+  // النظام القديم (للتوافق)
   PERMISSIONS,
   PERMISSION_NAMES,
   ACTIONS
