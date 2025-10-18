@@ -23,8 +23,8 @@ const {
   getUserEffectivePermissions
 } = require('../controllers/roles.controller');
 
-const { verifyToken } = require('../middleware/authMiddleware');
-const { checkPermission } = require('../middleware/permissionMiddleware');
+const { verifyToken } = require('../middleware/auth');
+const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
 
 // =====================================================
 // Routes للأدوار (Roles)
@@ -33,35 +33,35 @@ const { checkPermission } = require('../middleware/permissionMiddleware');
 // Get all roles
 router.get('/', 
   verifyToken, 
-  checkPermission('manage_permissions'),
+  checkPermissionNew('manage_permissions'),
   getAllRoles
 );
 
 // Get role by ID
 router.get('/:id', 
   verifyToken, 
-  checkPermission('view_permissions'),
+  checkPermissionNew('view_permissions'),
   getRoleById
 );
 
 // Create new role
 router.post('/', 
   verifyToken, 
-  checkPermission('manage_permissions'),
+  checkPermissionNew('manage_permissions'),
   createRole
 );
 
 // Update role
 router.put('/:id', 
   verifyToken, 
-  checkPermission('manage_permissions'),
+  checkPermissionNew('manage_permissions'),
   updateRole
 );
 
 // Delete role
 router.delete('/:id', 
   verifyToken, 
-  checkPermission('manage_permissions'),
+  checkPermissionNew('manage_permissions'),
   deleteRole
 );
 
@@ -72,14 +72,14 @@ router.delete('/:id',
 // Get all permissions
 router.get('/permissions/all', 
   verifyToken, 
-  checkPermission('view_permissions'),
+  checkPermissionNew('view_permissions'),
   getAllPermissions
 );
 
 // Get permission modules
 router.get('/permissions/modules', 
   verifyToken, 
-  checkPermission('view_permissions'),
+  checkPermissionNew('view_permissions'),
   getPermissionModules
 );
 
@@ -90,42 +90,42 @@ router.get('/permissions/modules',
 // Assign role to user
 router.post('/users/:userId/assign', 
   verifyToken, 
-  checkPermission('manage_users'),
+  checkPermissionNew('manage_users'),
   assignRoleToUser
 );
 
 // Remove role from user
 router.delete('/users/:userId/roles/:roleId', 
   verifyToken, 
-  checkPermission('manage_users'),
+  checkPermissionNew('manage_users'),
   removeRoleFromUser
 );
 
 // Get user roles
 router.get('/users/:userId/roles', 
   verifyToken, 
-  checkPermission('view_users'),
+  checkPermissionNew('view_users'),
   getUserRoles
 );
 
 // Get user permissions
 router.get('/users/:userId/permissions', 
   verifyToken, 
-  checkPermission('view_users'),
+  checkPermissionNew('view_users'),
   getUserPermissions
 );
 
 // Check user permission
 router.get('/users/:userId/check-permission/:permissionName', 
   verifyToken, 
-  checkPermission('view_users'),
+  checkPermissionNew('view_users'),
   checkUserPermission
 );
 
 // Get user effective permissions
 router.get('/users/:userId/effective-permissions', 
   verifyToken, 
-  checkPermission('view_users'),
+  checkPermissionNew('view_users'),
   getUserEffectivePermissions
 );
 
