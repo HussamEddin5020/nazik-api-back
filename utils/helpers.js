@@ -48,14 +48,14 @@ const buildPaginationResponse = (data, page, limit, total) => {
   const totalPages = Math.ceil(total / limit);
   
   return {
-    data,
+    users: data, // ✅ تغيير من "data" إلى "users"
     pagination: {
-      currentPage: parseInt(page),
-      totalPages,
-      totalItems: total,
-      itemsPerPage: parseInt(limit),
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1
+      current_page: parseInt(page), // ✅ تغيير من "currentPage" إلى "current_page"
+      per_page: parseInt(limit), // ✅ تغيير من "itemsPerPage" إلى "per_page"
+      total: total, // ✅ تغيير من "totalItems" إلى "total"
+      total_pages: totalPages, // ✅ تغيير من "totalPages" إلى "total_pages"
+      has_next: page < totalPages, // ✅ تغيير من "hasNextPage" إلى "has_next"
+      has_prev: page > 1 // ✅ تغيير من "hasPrevPage" إلى "has_prev"
     }
   };
 };

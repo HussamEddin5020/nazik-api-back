@@ -15,3 +15,5 @@ AND u.id NOT IN (
     FROM user_permissions 
     WHERE permission_id = 4004000007
 );
+
+
