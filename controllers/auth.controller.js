@@ -242,18 +242,9 @@ exports.login = asyncHandler(async (req, res) => {
       userData = { ...userData, ...customers[0] };
     }
   } else {
-    // Get user permissions
-    const [permissions] = await db.query(
-      `SELECT p.id as permission_id, p.name as permission_name,
-              a.id as action_id, a.name as action_name
-       FROM user_permissions up
-       JOIN permissions p ON up.permission_id = p.id
-       JOIN actions a ON up.action_id = a.id
-       WHERE up.user_id = ?`,
-      [user.id]
-    );
-    
-    userData.permissions = permissions;
+    // For system users, we don't need to fetch permissions during login
+    // Permissions will be fetched separately when needed
+    console.log('System user login - permissions will be fetched separately');
   }
 
   successResponse(res, {
