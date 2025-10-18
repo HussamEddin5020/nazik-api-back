@@ -33,7 +33,7 @@ const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
 // Get all roles
 router.get('/', 
   verifyToken, 
-  checkPermissionNew('manage_permissions'),
+  checkPermissionNew('view_permissions'),
   getAllRoles
 );
 
