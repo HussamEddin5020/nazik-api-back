@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
-const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
+const { verifyToken, isStaff } = require('../middleware/auth');
+const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
 
 // All routes require authentication
 router.use(verifyToken);
@@ -11,7 +12,7 @@ router.use(verifyToken);
  * @desc    Get all orders with filters
  * @access  Private (Staff with view_orders permission)
  */
-router.get('/', hasPermission('view_orders'), orderController.getAllOrders);
+router.get('/', checkPermissionNew('view_orders'), orderController.getAllOrders);
 
 /**
  * @route   GET /api/v1/orders/my-orders

@@ -10,7 +10,7 @@ const {
 } = require('../controllers/underPurchase.controller');
 
 const { verifyToken, isStaff } = require('../middleware/auth');
-const { checkPermission } = require('../middleware/permissionMiddleware');
+const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
 
 // All routes require authentication and staff role
 router.use(verifyToken, isStaff);
@@ -50,7 +50,7 @@ router.use(verifyToken, isStaff);
  *       403:
  *         description: Insufficient permissions
  */
-router.get('/orders', checkPermission('view'), getUnderPurchaseOrders);
+router.get('/orders', checkPermissionNew('view_orders'), getUnderPurchaseOrders);
 
 /**
  * @swagger
@@ -73,7 +73,7 @@ router.get('/orders', checkPermission('view'), getUnderPurchaseOrders);
  *       404:
  *         description: Order not found
  */
-router.get('/orders/:id', checkPermission('view'), getOrderDetails);
+router.get('/orders/:id', checkPermissionNew('view_orders'), getOrderDetails);
 
 /**
  * @swagger
@@ -87,7 +87,7 @@ router.get('/orders/:id', checkPermission('view'), getOrderDetails);
  *       200:
  *         description: List of carts
  */
-router.get('/carts', checkPermission('view'), getAvailableCarts);
+router.get('/carts', checkPermissionNew('view_carts'), getAvailableCarts);
 
 /**
  * @swagger
@@ -101,7 +101,7 @@ router.get('/carts', checkPermission('view'), getAvailableCarts);
  *       200:
  *         description: List of brands
  */
-router.get('/brands', checkPermission('view'), getBrands);
+router.get('/brands', checkPermissionNew('view_orders'), getBrands);
 
 /**
  * @swagger
@@ -137,7 +137,7 @@ router.get('/brands', checkPermission('view'), getBrands);
  *       404:
  *         description: Order or cart not found
  */
-router.post('/orders/:id/add-to-cart', checkPermission('add'), addOrderToCart);
+router.post('/orders/:id/add-to-cart', checkPermissionNew('update_orders'), addOrderToCart);
 
 /**
  * @swagger
@@ -164,7 +164,7 @@ router.post('/orders/:id/add-to-cart', checkPermission('add'), addOrderToCart);
  *       404:
  *         description: Order not found
  */
-router.delete('/orders/:id/remove-from-cart', checkPermission('delete'), removeOrderFromCart);
+router.delete('/orders/:id/remove-from-cart', checkPermissionNew('update_orders'), removeOrderFromCart);
 
 module.exports = router;
 
