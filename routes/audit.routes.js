@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const auditController = require('../controllers/audit.controller');
-const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
+const { verifyToken, isStaff } = require('../middleware/auth');
+const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
 
 // All routes require authentication and staff role
 router.use(verifyToken);
 router.use(isStaff);
 
 // All audit routes require view_audit_logs permission
-router.use(hasPermission('view_audit_logs'));
+router.use(checkPermissionNew('view_audit_logs'));
 
 /**
  * @route   GET /api/v1/audit/logs

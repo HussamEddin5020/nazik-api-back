@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
-const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
+const { verifyToken, isStaff } = require('../middleware/auth');
+const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
 
 // All routes require authentication and staff role
 router.use(verifyToken);
@@ -15,14 +16,14 @@ router.use(isStaff);
  * @desc    Get all users
  * @access  Private (Staff with view_users permission)
  */
-router.get('/', hasPermission('view_users'), userController.getAllUsers);
+router.get('/', checkPermissionNew('view_users'), userController.getAllUsers);
 
 /**
  * @route   POST /api/v1/users
  * @desc    Create new user
  * @access  Private (Staff with create_users permission)
  */
-router.post('/', hasPermission('create_users'), userController.createUser);
+router.post('/', checkPermissionNew('create_users'), userController.createUser);
 
 /**
  * @route   GET /api/v1/users/:id/permissions

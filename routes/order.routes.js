@@ -54,7 +54,7 @@ router.put('/:id/position', isStaff, orderController.updateOrderPosition);
  * @desc    Delete order
  * @access  Private (Staff with delete permission)
  */
-router.delete('/:id', isStaff, hasPermission('manage_orders', 'delete'), orderController.deleteOrder);
+router.delete('/:id', isStaff, checkPermissionNew('delete_orders'), orderController.deleteOrder);
 
 /**
  * @route   GET /api/v1/orders/:id/history
