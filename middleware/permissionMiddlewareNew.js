@@ -259,14 +259,14 @@ const { checkPermission, checkAnyPermission } = require('./permissionMiddleware'
 
 module.exports = {
   // New system
-  checkPermissionNew,
-  checkAnyPermissionNew,
-  checkAllPermissionsNew,
-  checkModulePermission,
-  checkAdmin,
-  getUserPermissionsForFrontend,
+  checkPermissionNew: exports.checkPermissionNew,
+  checkAnyPermissionNew: exports.checkAnyPermissionNew,
+  checkAllPermissionsNew: exports.checkAllPermissionsNew,
+  checkModulePermission: exports.checkModulePermission,
+  checkAdmin: exports.checkAdmin,
+  getUserPermissionsForFrontend: exports.getUserPermissionsForFrontend,
   
   // Old system (for backward compatibility)
-  checkPermission,
-  checkAnyPermission
+  checkPermission: exports.checkPermission,
+  checkAnyPermission: exports.checkAnyPermission
 };
