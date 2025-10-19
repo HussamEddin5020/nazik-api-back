@@ -16,13 +16,15 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
            o.cart_id, o.box_id, o.barcode, o.purchase_method, o.is_archived,
            op.name as position_name,
            u.name as customer_name, u.email as customer_email, u.phone as customer_phone,
-           od.title, od.color, od.size, od.total,
+           od.title, od.color, od.size, od.product_link,
+           oi.item_price, oi.quantity, oi.total_amount,
            (SELECT COUNT(*) FROM order_details WHERE order_id = o.id) as details_count
     FROM orders o
     LEFT JOIN order_position op ON o.position_id = op.id
     LEFT JOIN customers c ON o.customer_id = c.id
     LEFT JOIN users u ON c.user_id = u.id
     LEFT JOIN order_details od ON o.id = od.order_id
+    LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
     WHERE 1=1
   `;
 
@@ -124,8 +126,8 @@ exports.getOrderById = asyncHandler(async (req, res) => {
             a.city_id, a.area_id, a.street,
             ci.name as city_name, ar.name as area_name,
             od.id as detail_id, od.image_url, od.title, od.description, od.notes,
-            od.color, od.size, od.capacity, od.product_link, od.prepaid_value, 
-            od.original_product_price, od.commission, od.total
+            od.color, od.size, od.capacity, od.product_link,
+            oi.item_price, oi.quantity, oi.total_amount, oi.purchase_method
      FROM orders o
      LEFT JOIN order_position op ON o.position_id = op.id
      LEFT JOIN customers cu ON o.customer_id = cu.id
@@ -134,6 +136,7 @@ exports.getOrderById = asyncHandler(async (req, res) => {
      LEFT JOIN cities ci ON a.city_id = ci.id
      LEFT JOIN areas ar ON a.area_id = ar.id
      LEFT JOIN order_details od ON o.id = od.order_id
+     LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
      WHERE o.id = ?`,
     [id]
   );
@@ -174,10 +177,13 @@ exports.getOrderById = asyncHandler(async (req, res) => {
       color: orders[0].color,
       size: orders[0].size,
       capacity: orders[0].capacity,
-      prepaid_value: orders[0].prepaid_value,
-      original_product_price: orders[0].original_product_price,
-      commission: orders[0].commission,
-      total: orders[0].total
+      product_link: orders[0].product_link
+    } : null,
+    invoice: orders[0].item_price ? {
+      item_price: orders[0].item_price,
+      quantity: orders[0].quantity,
+      total_amount: orders[0].total_amount,
+      purchase_method: orders[0].purchase_method
     } : null
   };
 
@@ -322,8 +328,7 @@ exports.updateOrder = asyncHandler(async (req, res) => {
       const detailValues = [];
 
       const allowedDetailFields = ['image_url', 'title', 'description', 'notes', 'color', 
-                                     'size', 'capacity', 'prepaid_value', 
-                                     'original_product_price', 'commission', 'total'];
+                                     'size', 'capacity', 'product_link'];
 
       allowedDetailFields.forEach(field => {
         if (d[field] !== undefined) {

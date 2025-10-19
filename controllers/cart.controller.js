@@ -59,12 +59,14 @@ exports.getCartById = asyncHandler(async (req, res) => {
     `SELECT o.id, o.customer_id, o.position_id, o.barcode,
             op.name as position_name,
             u.name as customer_name,
-            od.title, od.total
+            od.title, od.product_link,
+            oi.item_price, oi.quantity, oi.total_amount
      FROM orders o
      LEFT JOIN order_position op ON o.position_id = op.id
      LEFT JOIN customers c ON o.customer_id = c.id
      LEFT JOIN users u ON c.user_id = u.id
      LEFT JOIN order_details od ON o.id = od.order_id
+     LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
      WHERE o.cart_id = ?
      ORDER BY o.created_at DESC`,
     [id]
