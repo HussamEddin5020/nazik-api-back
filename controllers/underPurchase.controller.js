@@ -72,6 +72,7 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
       od.color,
       od.size,
       od.capacity,
+      od.product_link,
       oi.item_price,
       oi.quantity,
       oi.total_amount,
