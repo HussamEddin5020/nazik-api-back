@@ -11,6 +11,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const {
     payment_method, // 'cash' or 'card'
+    purchase_method, // 'mall' or 'online'
     card_id, // إذا كان الدفع ببطاقة
     discount_amount = 0, // خصم Gift Card
     expenses_amount = 0, // مصاريف إضافية
@@ -22,6 +23,10 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
   // التحقق من صحة البيانات
   if (!payment_method || !['cash', 'card'].includes(payment_method)) {
     return errorResponse(res, 'طريقة الدفع غير صحيحة. يجب أن تكون cash أو card', 400);
+  }
+
+  if (!purchase_method || !['mall', 'online'].includes(purchase_method)) {
+    return errorResponse(res, 'طريقة الشراء غير صحيحة. يجب أن تكون mall أو online', 400);
   }
 
   if (payment_method === 'card' && !card_id) {
@@ -142,6 +147,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
     const [updateResult] = await connection.query(
       `UPDATE order_invoices SET 
         payment_method = ?, 
+        purchase_method = ?,
         cash_amount = ?, 
         card_id = ?, 
         card_paid_amount = ?,
@@ -151,6 +157,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
        WHERE order_id = ?`,
       [
         payment_method,
+        purchase_method,
         cash_amount,
         payment_method === 'card' ? card_id : null,
         card_paid_amount,
@@ -184,7 +191,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
         `SELECT COUNT(*) as total,
                 SUM(CASE WHEN position_id >= 3 THEN 1 ELSE 0 END) as purchased
          FROM orders
-         WHERE cart_id = ? AND is_archived = 0`,
+         WHERE cart_id = ?`,
         [order.cart_id]
       );
 
