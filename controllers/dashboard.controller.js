@@ -26,7 +26,7 @@ exports.getStatistics = asyncHandler(async (req, res) => {
       `SELECT op.name, COUNT(o.id) as count
        FROM orders o
        JOIN order_position op ON o.position_id = op.id
-       WHERE o.is_archived = 0
+       WHERE 1=1
        GROUP BY o.position_id, op.name
        ORDER BY count DESC`
     );
@@ -79,13 +79,13 @@ exports.getRecentOrders = asyncHandler(async (req, res) => {
     `SELECT o.id, o.created_at, o.position_id,
             op.name as position_name,
             u.name as customer_name,
-            od.title, od.total
+            od.title
      FROM orders o
      LEFT JOIN order_position op ON o.position_id = op.id
      LEFT JOIN customers c ON o.customer_id = c.id
      LEFT JOIN users u ON c.user_id = u.id
      LEFT JOIN order_details od ON o.id = od.order_id
-     WHERE o.is_archived = 0
+     WHERE 1=1
      ORDER BY o.created_at DESC
      LIMIT ?`,
     [parseInt(limit)]

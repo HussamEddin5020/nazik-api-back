@@ -13,7 +13,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
 
   let query = `
     SELECT o.id, o.customer_id, o.position_id, o.created_at, o.updated_at,
-           o.cart_id, o.box_id, o.barcode, o.is_archived,
+           o.cart_id, o.box_id, o.barcode,
            op.name as position_name,
            u.name as customer_name, u.email as customer_email, u.phone as customer_phone,
            od.title, od.color, od.size, od.product_link, od.image_url,
@@ -44,7 +44,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   }
 
   if (is_archived !== undefined) {
-    query += ' AND o.is_archived = ?';
+    query += ' AND 1=1'; // Always true since is_archived column doesn't exist
     params.push(is_archived === 'true' ? 1 : 0);
   }
 
@@ -92,13 +92,13 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
   // Get orders
   const [orders] = await db.query(
     `SELECT o.id, o.position_id, o.created_at, o.updated_at,
-            o.barcode, o.purchase_method,
+            o.barcode,
             op.name as position_name,
-            od.title, od.description, od.color, od.size, od.total, od.image_url
+            od.title, od.description, od.color, od.size, od.image_url
      FROM orders o
      LEFT JOIN order_position op ON o.position_id = op.id
      LEFT JOIN order_details od ON o.id = od.order_id
-     WHERE o.customer_id = ? AND o.is_archived = 0
+     WHERE o.customer_id = ?
      ORDER BY o.created_at DESC
      LIMIT ? OFFSET ?`,
     [customerId, pageLimit, offset]
@@ -128,8 +128,7 @@ exports.getOrderById = asyncHandler(async (req, res) => {
             a.city_id, a.area_id, a.street,
             ci.name as city_name, ar.name as area_name,
             od.id as detail_id, od.image_url, od.title, od.description, od.notes,
-            od.color, od.size, od.capacity, od.prepaid_value, 
-            od.original_product_price, od.commission, od.total
+            od.color, od.size, od.capacity, od.product_link
      FROM orders o
      LEFT JOIN order_position op ON o.position_id = op.id
      LEFT JOIN customers cu ON o.customer_id = cu.id
@@ -265,7 +264,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     // Get created order
     const [createdOrder] = await connection.query(
       `SELECT o.*, op.name as position_name,
-              od.title, od.total
+              od.title
        FROM orders o
        LEFT JOIN order_position op ON o.position_id = op.id
        LEFT JOIN order_details od ON o.id = od.order_id
@@ -350,7 +349,7 @@ exports.updateOrder = asyncHandler(async (req, res) => {
     // Get updated order
     const [updatedOrder] = await connection.query(
       `SELECT o.*, op.name as position_name,
-              od.title, od.total
+              od.title
        FROM orders o
        LEFT JOIN order_position op ON o.position_id = op.id
        LEFT JOIN order_details od ON o.id = od.order_id

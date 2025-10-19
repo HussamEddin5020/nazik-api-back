@@ -18,7 +18,7 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
   const offset = (page - 1) * limit;
 
   // Build WHERE conditions
-  let conditions = ['o.position_id = 2', 'o.is_archived = 0'];
+  let conditions = ['o.position_id = 2'];
   let queryParams = [];
 
   // Search filter (search in title, customer name, order id, barcode)
@@ -117,7 +117,6 @@ exports.getOrderDetails = asyncHandler(async (req, res) => {
       o.barcode,
       o.cart_id,
       o.brand_id,
-      o.purchase_method,
       b.name as brand_name,
       op.id as position_id,
       op.name as position_name,
@@ -129,10 +128,6 @@ exports.getOrderDetails = asyncHandler(async (req, res) => {
       od.color,
       od.size,
       od.capacity,
-      od.prepaid_value,
-      od.original_product_price,
-      od.commission,
-      od.total as order_total,
       u.name as customer_name,
       u.email as customer_email,
       u.phone as customer_phone,
@@ -293,7 +288,7 @@ exports.getBrands = asyncHandler(async (req, res) => {
       b.name,
       COUNT(o.id) as orders_count
      FROM brands b
-     LEFT JOIN orders o ON b.id = o.brand_id AND o.position_id = 2 AND o.is_archived = 0
+     LEFT JOIN orders o ON b.id = o.brand_id AND o.position_id = 2
      GROUP BY b.id, b.name
      ORDER BY b.name ASC`
   );

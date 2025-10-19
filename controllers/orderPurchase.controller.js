@@ -39,8 +39,8 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
 
     // 1. جلب معلومات الطلب من order_invoices
     const [orderResult] = await connection.query(
-      `SELECT o.id, o.cart_id, o.position_id, o.purchase_method,
-              oi.total_amount as order_total, od.prepaid_value, od.title
+      `SELECT o.id, o.cart_id, o.position_id,
+              oi.total_amount as order_total, od.title
        FROM orders o
        INNER JOIN order_details od ON od.order_id = o.id
        INNER JOIN order_invoices oi ON oi.order_id = o.id
@@ -234,12 +234,10 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
       o.id,
       o.position_id,
       o.cart_id,
-      o.purchase_method,
       o.order_invoice_id,
       od.title,
       od.description,
       od.image_url,
-      od.prepaid_value,
       -- الأسعار الحقيقية من order_invoices
       oi.item_price as original_product_price,
       oi.item_price as commission, -- نفس السعر مؤقتاً

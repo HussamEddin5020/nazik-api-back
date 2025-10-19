@@ -116,7 +116,6 @@ const getShipmentById = asyncHandler(async (req, res) => {
       oi.quantity,
       oi.item_price,
       oi.total_amount,
-      od.prepaid_value,
       u.name as customer_name,
       u.email as customer_email,
       u.phone as customer_phone,
@@ -130,7 +129,7 @@ const getShipmentById = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.box_id = ? AND o.is_archived = 0
+    WHERE o.box_id = ?
     ORDER BY o.created_at DESC`,
     [shipment.box_id]
   );
@@ -349,7 +348,7 @@ const getClosedBoxes = asyncHandler(async (req, res) => {
       COUNT(o.id) as actual_orders_count,
       CASE WHEN s.id IS NOT NULL THEN 1 ELSE 0 END as has_shipment
     FROM box b
-    LEFT JOIN orders o ON o.box_id = b.id AND o.is_archived = 0
+    LEFT JOIN orders o ON o.box_id = b.id
     LEFT JOIN shipments s ON s.box_id = b.id
     WHERE b.is_available = 0
     GROUP BY b.id, b.number, b.orders_count, s.id
@@ -575,7 +574,6 @@ const getBoxOrders = asyncHandler(async (req, res) => {
       oi.quantity,
       oi.item_price,
       oi.total_amount,
-      od.prepaid_value,
       u.name as customer_name,
       u.email as customer_email,
       u.phone as customer_phone,
@@ -589,7 +587,7 @@ const getBoxOrders = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.box_id = ? AND o.position_id = 5 AND o.is_archived = 0
+    WHERE o.box_id = ? AND o.position_id = 5
     ORDER BY o.created_at DESC`,
     [shipment.box_id]
   );

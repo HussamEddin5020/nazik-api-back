@@ -21,7 +21,7 @@ const getAllCarts = asyncHandler(async (req, res) => {
       SUM(CASE WHEN o.position_id = 3 THEN 1 ELSE 0 END) as purchased_orders,
       SUM(CASE WHEN o.position_id > 3 THEN 1 ELSE 0 END) as completed_orders
     FROM cart c
-    LEFT JOIN orders o ON o.cart_id = c.id AND o.is_archived = 0
+    LEFT JOIN orders o ON o.cart_id = c.id
   `;
 
   const params = [];
@@ -88,8 +88,6 @@ const getCartById = asyncHandler(async (req, res) => {
       o.position_id,
       o.cart_id,
       o.box_id,
-      o.purchase_method,
-      o.is_archived,
       o.order_invoice_id,
       o.brand_id,
       o.created_at,
@@ -101,33 +99,32 @@ const getCartById = asyncHandler(async (req, res) => {
       od.color,
       od.size,
       od.capacity,
-      od.prepaid_value,
+      od.product_link,
       -- الأسعار الحقيقية من order_invoices
-      oi.item_price as original_product_price,
-      oi.item_price as commission, -- نفس السعر مؤقتاً
-      oi.total_amount as order_total,
-      u.name as customer_first_name,
+      oi.item_price,
+      oi.quantity,
+      oi.total_amount,
+      oi.purchase_method,
+      u.name as customer_name,
       u.email as customer_email,
       u.phone as customer_phone,
       op.name as position_name,
       b.name as brand_name,
       oi.id as invoice_id,
       oi.invoice_number,
-      oi.quantity,
-      oi.total_amount as invoice_total,
       oi.payment_method as invoice_payment_method,
       oi.cash_amount,
       oi.card_paid_amount,
       oi.discount_amount,
       oi.expenses_amount
     FROM orders o
-    INNER JOIN order_details od ON od.order_id = o.id
-    INNER JOIN customers c ON c.id = o.customer_id
-    INNER JOIN users u ON u.id = c.user_id
-    INNER JOIN order_position op ON op.id = o.position_id
+    LEFT JOIN order_details od ON od.order_id = o.id
+    LEFT JOIN customers c ON c.id = o.customer_id
+    LEFT JOIN users u ON u.id = c.user_id
+    LEFT JOIN order_position op ON op.id = o.position_id
     LEFT JOIN brands b ON b.id = o.brand_id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
-    WHERE o.cart_id = ? AND o.is_archived = 0
+    WHERE o.cart_id = ?
     ORDER BY o.created_at DESC`,
     [id]
   );

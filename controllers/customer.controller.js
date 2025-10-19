@@ -193,13 +193,13 @@ exports.getCustomerOrders = asyncHandler(async (req, res) => {
 
   const [orders] = await db.query(
     `SELECT o.id, o.position_id, o.created_at, o.updated_at,
-            o.barcode, o.purchase_method,
+            o.barcode,
             op.name as position_name,
-            od.title, od.total
+            od.title
      FROM orders o
      LEFT JOIN order_position op ON o.position_id = op.id
      LEFT JOIN order_details od ON o.id = od.order_id
-     WHERE o.customer_id = ? AND o.is_archived = 0
+     WHERE o.customer_id = ?
      ORDER BY o.created_at DESC
      LIMIT ? OFFSET ?`,
     [id, pageLimit, offset]
