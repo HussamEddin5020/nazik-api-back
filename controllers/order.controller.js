@@ -124,7 +124,7 @@ exports.getOrderById = asyncHandler(async (req, res) => {
             a.city_id, a.area_id, a.street,
             ci.name as city_name, ar.name as area_name,
             od.id as detail_id, od.image_url, od.title, od.description, od.notes,
-            od.color, od.size, od.capacity, od.prepaid_value, 
+            od.color, od.size, od.capacity, od.product_link, od.prepaid_value, 
             od.original_product_price, od.commission, od.total
      FROM orders o
      LEFT JOIN order_position op ON o.position_id = op.id
