@@ -72,16 +72,15 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
       od.color,
       od.size,
       od.capacity,
-      od.prepaid_value,
-      oi.item_price as original_product_price,
-      NULL as commission,
-      oi.total_amount as order_total,
+      oi.item_price,
+      oi.quantity,
+      oi.total_amount,
+      oi.purchase_method,
       u.name as customer_name,
       u.email as customer_email,
       u.phone as customer_phone,
       cu.id as customer_id,
-      cart.is_available as cart_is_available,
-      oi.quantity as invoice_quantity
+      cart.is_available as cart_is_available
      FROM orders o
      LEFT JOIN order_details od ON o.id = od.order_id
      LEFT JOIN order_position op ON o.position_id = op.id
