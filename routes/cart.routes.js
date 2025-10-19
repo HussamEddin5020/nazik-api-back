@@ -28,11 +28,6 @@ router.get('/:id', cartController.getCartById);
  */
 router.post('/', cartController.createCart);
 
-/**
- * @route   PUT /api/v1/carts/:id/availability
- * @desc    Update cart availability
- * @access  Private (Staff)
- */
-router.put('/:id/availability', cartController.updateCartAvailability);
+// تم إلغاء route إغلاق السلة يدوياً - السلة تُغلق تلقائياً
 
 module.exports = router;

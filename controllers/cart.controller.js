@@ -121,30 +121,6 @@ exports.createCart = asyncHandler(async (req, res) => {
   }, 'تم إنشاء العربة بنجاح', 201);
 });
 
-/**
- * @desc    Update cart availability
- * @route   PUT /api/v1/carts/:id/availability
- * @access  Private (Staff)
- */
-exports.updateCartAvailability = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { is_available } = req.body;
-
-  if (is_available === undefined) {
-    return errorResponse(res, 'حالة التوفر مطلوبة', 400);
-  }
-
-  await db.query(
-    'UPDATE cart SET is_available = ? WHERE id = ?',
-    [is_available ? 1 : 0, id]
-  );
-
-  const [cart] = await db.query('SELECT * FROM cart WHERE id = ?', [id]);
-
-  successResponse(res, {
-    ...cart[0],
-    cart_number: formatCartNumber(cart[0].id)
-  }, 'تم تحديث حالة العربة بنجاح');
-});
+// تم إلغاء API إغلاق السلة يدوياً - السلة تُغلق تلقائياً عند تأكيد شراء جميع الطلبات
 
 module.exports = exports;

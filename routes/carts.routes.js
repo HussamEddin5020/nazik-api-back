@@ -4,7 +4,6 @@ const {
   getAllCarts,
   getCartById,
   createCart,
-  updateCartAvailability,
 } = require('../controllers/carts.controller');
 const { verifyToken } = require('../middleware/auth');
 
@@ -27,7 +26,7 @@ router.use(checkUserType);
 router.get('/', getAllCarts);
 router.get('/:id', getCartById);
 router.post('/', createCart);
-router.put('/:id/availability', updateCartAvailability);
+// تم إلغاء route إغلاق السلة يدوياً - السلة تُغلق تلقائياً
 
 module.exports = router;
 

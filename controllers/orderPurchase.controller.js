@@ -185,18 +185,18 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
       [invoiceId, orderId]
     );
 
-    // 7. التحقق من جميع الطلبات في السلة
+    // 7. التحقق من جميع الطلبات في السلة وإغلاقها تلقائياً إذا تم شراء الكل
     if (order.cart_id) {
       const [cartOrders] = await connection.query(
         `SELECT COUNT(*) as total,
-                SUM(CASE WHEN position_id >= 3 THEN 1 ELSE 0 END) as purchased
+                SUM(CASE WHEN position_id = 3 THEN 1 ELSE 0 END) as confirmed_purchase
          FROM orders
          WHERE cart_id = ?`,
         [order.cart_id]
       );
 
-      // إذا تم شراء جميع الطلبات → إغلاق السلة
-      if (cartOrders[0].total === cartOrders[0].purchased && cartOrders[0].total > 0) {
+      // إذا تم تأكيد شراء جميع الطلبات (position_id = 3) → إغلاق السلة تلقائياً
+      if (cartOrders[0].total === cartOrders[0].confirmed_purchase && cartOrders[0].total > 0) {
         await connection.query(
           'UPDATE cart SET is_available = 0 WHERE id = ?',
           [order.cart_id]
