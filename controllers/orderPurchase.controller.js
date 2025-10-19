@@ -189,14 +189,14 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
     if (order.cart_id) {
       const [cartOrders] = await connection.query(
         `SELECT COUNT(*) as total,
-                SUM(CASE WHEN position_id = 3 THEN 1 ELSE 0 END) as confirmed_purchase
+                SUM(CASE WHEN position_id >= 3 THEN 1 ELSE 0 END) as purchased_orders
          FROM orders
          WHERE cart_id = ?`,
         [order.cart_id]
       );
 
-      // إذا تم تأكيد شراء جميع الطلبات (position_id = 3) → إغلاق السلة تلقائياً
-      if (cartOrders[0].total === cartOrders[0].confirmed_purchase && cartOrders[0].total > 0) {
+      // إذا تم شراء جميع الطلبات (position_id >= 3) → إغلاق السلة تلقائياً
+      if (cartOrders[0].total === cartOrders[0].purchased_orders && cartOrders[0].total > 0) {
         await connection.query(
           'UPDATE cart SET is_available = 0 WHERE id = ?',
           [order.cart_id]
@@ -294,7 +294,61 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
   }, 'تم جلب تفاصيل الطلب بنجاح');
 });
 
+/**
+ * @desc    Close cart automatically if all orders are purchased
+ * @route   POST /api/v1/carts/:cartId/close-if-ready
+ * @access  Private (User only)
+ */
+const closeCartIfReady = asyncHandler(async (req, res) => {
+  const { cartId } = req.params;
+
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+
+    // التحقق من جميع الطلبات في السلة
+    const [cartOrders] = await connection.query(
+      `SELECT COUNT(*) as total,
+              SUM(CASE WHEN position_id >= 3 THEN 1 ELSE 0 END) as purchased_orders
+       FROM orders
+       WHERE cart_id = ?`,
+      [cartId]
+    );
+
+    // إذا تم شراء جميع الطلبات → إغلاق السلة
+    if (cartOrders[0].total === cartOrders[0].purchased_orders && cartOrders[0].total > 0) {
+      await connection.query(
+        'UPDATE cart SET is_available = 0 WHERE id = ?',
+        [cartId]
+      );
+      
+      await connection.commit();
+      
+      successResponse(res, {
+        cart_id: cartId,
+        closed: true,
+        message: 'تم إغلاق السلة تلقائياً - جميع الطلبات تم شراؤها'
+      });
+    } else {
+      await connection.commit();
+      
+      successResponse(res, {
+        cart_id: cartId,
+        closed: false,
+        message: `السلة لا يمكن إغلاقها - ${cartOrders[0].purchased_orders}/${cartOrders[0].total} طلبات تم شراؤها`
+      });
+    }
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
 module.exports = {
   confirmOrderPurchase,
   getOrderPurchaseDetails,
+  closeCartIfReady,
 };
