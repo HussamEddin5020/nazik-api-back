@@ -74,7 +74,7 @@ exports.getCartById = asyncHandler(async (req, res) => {
             oi.item_price,
             oi.quantity,
             oi.total_amount,
-            oi.purchase_method,
+            oi.payment_method as purchase_method,
             u.name as customer_name,
             u.email as customer_email,
             u.phone as customer_phone,
