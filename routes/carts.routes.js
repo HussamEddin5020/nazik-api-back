@@ -5,7 +5,6 @@ const {
   getCartById,
   createCart,
 } = require('../controllers/carts.controller');
-const { closeCartIfReady } = require('../controllers/orderPurchase.controller');
 const { verifyToken } = require('../middleware/auth');
 
 // Middleware للتحقق من أن المستخدم هو user وليس customer
@@ -27,7 +26,6 @@ router.use(checkUserType);
 router.get('/', getAllCarts);
 router.get('/:id', getCartById);
 router.post('/', createCart);
-router.post('/:cartId/close-if-ready', closeCartIfReady);
 // تم إلغاء route إغلاق السلة يدوياً - السلة تُغلق تلقائياً
 
 module.exports = router;
