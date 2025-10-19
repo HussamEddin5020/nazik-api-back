@@ -56,16 +56,38 @@ exports.getCartById = asyncHandler(async (req, res) => {
 
   // Get cart orders
   const [orders] = await db.query(
-    `SELECT o.id, o.customer_id, o.position_id, o.barcode,
+    `SELECT o.id,
+            o.created_at,
+            o.updated_at,
+            o.barcode,
+            o.cart_id,
+            o.brand_id,
+            b.name as brand_name,
             op.name as position_name,
+            od.image_url,
+            od.title,
+            od.description,
+            od.color,
+            od.size,
+            od.capacity,
+            od.product_link,
+            oi.item_price,
+            oi.quantity,
+            oi.total_amount,
+            oi.purchase_method,
             u.name as customer_name,
-            od.title, od.product_link,
-            oi.item_price, oi.quantity, oi.total_amount
+            u.email as customer_email,
+            u.phone as customer_phone,
+            c.id as customer_id,
+            o.position_id,
+            cart.is_available as cart_is_available
      FROM orders o
+     LEFT JOIN order_details od ON o.id = od.order_id
      LEFT JOIN order_position op ON o.position_id = op.id
      LEFT JOIN customers c ON o.customer_id = c.id
      LEFT JOIN users u ON c.user_id = u.id
-     LEFT JOIN order_details od ON o.id = od.order_id
+     LEFT JOIN brands b ON o.brand_id = b.id
+     LEFT JOIN cart ON o.cart_id = cart.id
      LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
      WHERE o.cart_id = ?
      ORDER BY o.created_at DESC`,
