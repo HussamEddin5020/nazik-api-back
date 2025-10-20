@@ -46,7 +46,7 @@ class Customer {
    */
   static async getOrdersCount(customerId) {
     const [result] = await db.query(
-      'SELECT COUNT(*) as count FROM orders WHERE customer_id = ? AND is_archived = 0',
+      'SELECT COUNT(*) as count FROM orders WHERE customer_id = ? AND is_active = 1',
       [customerId]
     );
 

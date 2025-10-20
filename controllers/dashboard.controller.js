@@ -13,7 +13,7 @@ exports.getStatistics = asyncHandler(async (req, res) => {
     
     // Total orders
     const [totalOrders] = await db.query(
-      'SELECT COUNT(*) as total FROM orders WHERE is_archived = 0'
+      'SELECT COUNT(*) as total FROM orders WHERE is_active = 1'
     );
 
     // Total customers

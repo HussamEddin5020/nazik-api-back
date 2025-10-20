@@ -49,7 +49,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
        FROM orders o
        INNER JOIN order_details od ON od.order_id = o.id
        INNER JOIN order_invoices oi ON oi.order_id = o.id
-       WHERE o.id = ?`,
+       WHERE o.id = ? AND o.is_active = 1`,
       [orderId]
     );
 
@@ -199,7 +199,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
                COUNT(*) as total,
                SUM(CASE WHEN position_id >= 3 THEN 1 ELSE 0 END) as purchased
              FROM orders 
-             WHERE cart_id = ?
+             WHERE cart_id = ? AND is_active = 1
              GROUP BY cart_id
              HAVING total = purchased AND total > 0
            ) as subquery
@@ -210,6 +210,9 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
       // إضافة رسالة في الـ response إذا تم إغلاق السلة
       if (updateResult.affectedRows > 0) {
         console.log(`✅ تم إغلاق السلة ${order.cart_id} تلقائياً - جميع الطلبات تم شراؤها`);
+        
+        // حساب إجمالي فاتورة السلة تلقائياً
+        await calculateAndUpdateCartTotal(connection, order.cart_id);
       }
     }
 
@@ -279,7 +282,7 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
     INNER JOIN order_position op ON op.id = o.position_id
     LEFT JOIN brands b ON b.id = o.brand_id
     LEFT JOIN order_invoices oi ON oi.order_id = o.id
-    WHERE o.id = ?`,
+    WHERE o.id = ? AND o.is_active = 1`,
     [orderId]
   );
 
@@ -302,6 +305,81 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
     }
   }, 'تم جلب تفاصيل الطلب بنجاح');
 });
+
+/**
+ * حساب وإضافة إجمالي فاتورة السلة تلقائياً
+ * @param {Object} connection - Database connection
+ * @param {number} cartId - Cart ID
+ */
+async function calculateAndUpdateCartTotal(connection, cartId) {
+  try {
+    console.log(`🧮 حساب إجمالي فاتورة السلة ${cartId}...`);
+    
+    // جلب جميع فواتير الطلبات في السلة
+    const [invoices] = await connection.query(
+      `SELECT 
+        oi.total_amount,
+        oi.expenses_amount,
+        oi.discount_amount
+       FROM orders o
+       INNER JOIN order_invoices oi ON o.order_invoice_id = oi.id
+       WHERE o.cart_id = ? AND o.is_active = 1`,
+      [cartId]
+    );
+
+    if (invoices.length === 0) {
+      console.log(`⚠️ لا توجد فواتير للسلة ${cartId}`);
+      return;
+    }
+
+    // حساب الإجمالي
+    let totalAmount = 0;
+    let totalExpenses = 0;
+    let totalDiscount = 0;
+
+    invoices.forEach(invoice => {
+      totalAmount += parseFloat(invoice.total_amount || 0);
+      totalExpenses += parseFloat(invoice.expenses_amount || 0);
+      totalDiscount += parseFloat(invoice.discount_amount || 0);
+    });
+
+    // الصيغة: (إجمالي الطلبات + المصاريف) - الخصم
+    const finalTotal = (totalAmount + totalExpenses) - totalDiscount;
+
+    console.log(`📊 إجمالي السلة ${cartId}:`, {
+      totalAmount,
+      totalExpenses,
+      totalDiscount,
+      finalTotal
+    });
+
+    // إنشاء أو تحديث فاتورة الشراء للسلة
+    const [existingInvoice] = await connection.query(
+      'SELECT id FROM purchase_invoices WHERE cart_id = ?',
+      [cartId]
+    );
+
+    if (existingInvoice.length > 0) {
+      // تحديث الفاتورة الموجودة
+      await connection.query(
+        'UPDATE purchase_invoices SET total = ? WHERE cart_id = ?',
+        [finalTotal, cartId]
+      );
+      console.log(`✅ تم تحديث فاتورة الشراء للسلة ${cartId}: ${finalTotal}`);
+    } else {
+      // إنشاء فاتورة جديدة
+      await connection.query(
+        'INSERT INTO purchase_invoices (cart_id, total, created_at) VALUES (?, ?, NOW())',
+        [cartId, finalTotal]
+      );
+      console.log(`✅ تم إنشاء فاتورة شراء جديدة للسلة ${cartId}: ${finalTotal}`);
+    }
+
+  } catch (error) {
+    console.error(`❌ خطأ في حساب إجمالي السلة ${cartId}:`, error);
+    throw error;
+  }
+}
 
 module.exports = {
   confirmOrderPurchase,

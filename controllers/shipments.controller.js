@@ -129,7 +129,7 @@ const getShipmentById = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.box_id = ?
+    WHERE o.box_id = ? AND o.is_active = 1
     ORDER BY o.created_at DESC`,
     [shipment.box_id]
   );
@@ -467,7 +467,7 @@ const openBox = asyncHandler(async (req, res) => {
     const [collectionsResult] = await connection.query(
       `SELECT DISTINCT o.collection_id 
        FROM orders o 
-       WHERE o.box_id = ? AND o.collection_id IS NOT NULL`,
+       WHERE o.box_id = ? AND o.collection_id IS NOT NULL AND o.is_active = 1`,
       [shipment.box_id]
     );
 
@@ -482,7 +482,7 @@ const openBox = asyncHandler(async (req, res) => {
         `SELECT COUNT(*) as total_orders,
                 SUM(CASE WHEN position_id = 6 THEN 1 ELSE 0 END) as opened_orders
          FROM orders 
-         WHERE collection_id = ?`,
+         WHERE collection_id = ? AND is_active = 1`,
         [collectionId]
       );
 
@@ -587,7 +587,7 @@ const getBoxOrders = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.box_id = ? AND o.position_id = 5
+    WHERE o.box_id = ? AND o.position_id = 5 AND o.is_active = 1
     ORDER BY o.created_at DESC`,
     [shipment.box_id]
   );

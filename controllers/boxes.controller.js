@@ -115,7 +115,7 @@ const getBoxById = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.box_id = ? AND o.position_id IN (3, 4)
+    WHERE o.box_id = ? AND o.position_id IN (3, 4) AND o.is_active = 1
     ORDER BY o.created_at DESC`,
     [id]
   );
@@ -250,7 +250,7 @@ const getAvailableOrders = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.position_id = 3 AND (o.box_id IS NULL OR o.box_id = 0)
+    WHERE o.position_id = 3 AND (o.box_id IS NULL OR o.box_id = 0) AND o.is_active = 1
     ORDER BY o.created_at DESC
     LIMIT ? OFFSET ?`,
     [parseInt(limit), offset]
@@ -260,7 +260,7 @@ const getAvailableOrders = asyncHandler(async (req, res) => {
   const [countResult] = await db.query(
     `SELECT COUNT(*) as total 
     FROM orders o 
-    WHERE o.position_id = 3 AND (o.box_id IS NULL OR o.box_id = 0)`
+    WHERE o.position_id = 3 AND (o.box_id IS NULL OR o.box_id = 0) AND o.is_active = 1`
   );
 
   const total = countResult[0].total;
@@ -312,7 +312,7 @@ const addOrderToBox = asyncHandler(async (req, res) => {
 
     // Check if order exists and is available (position_id = 3)
     const [orderResult] = await connection.query(
-      'SELECT id, position_id, box_id FROM orders WHERE id = ?',
+      'SELECT id, position_id, box_id FROM orders WHERE id = ? AND is_active = 1',
       [orderId]
     );
 
@@ -375,7 +375,7 @@ const removeOrderFromBox = asyncHandler(async (req, res) => {
 
     // Check if order is in this box
     const [orderResult] = await connection.query(
-      'SELECT id, box_id FROM orders WHERE id = ? AND box_id = ?',
+      'SELECT id, box_id FROM orders WHERE id = ? AND box_id = ? AND is_active = 1',
       [orderId, boxId]
     );
 

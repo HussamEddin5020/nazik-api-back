@@ -129,9 +129,9 @@ class OrderService {
   /**
    * Archive order
    */
-  static async archiveOrder(orderId) {
+  static async cancelOrder(orderId) {
     await db.query(
-      'UPDATE orders SET is_archived = 1 WHERE id = ?',
+      'UPDATE orders SET is_active = 0 WHERE id = ?',
       [orderId]
     );
   }
@@ -139,9 +139,9 @@ class OrderService {
   /**
    * Unarchive order
    */
-  static async unarchiveOrder(orderId) {
+  static async restoreOrder(orderId) {
     await db.query(
-      'UPDATE orders SET is_archived = 0 WHERE id = ?',
+      'UPDATE orders SET is_active = 1 WHERE id = ?',
       [orderId]
     );
   }

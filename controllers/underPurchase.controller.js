@@ -18,7 +18,7 @@ exports.getUnderPurchaseOrders = asyncHandler(async (req, res) => {
   const offset = (page - 1) * limit;
 
   // Build WHERE conditions
-  let conditions = ['o.position_id = 2'];
+  let conditions = ['o.position_id = 2', 'o.is_active = 1'];
   let queryParams = [];
 
   // Search filter (search in title, customer name, order id, barcode)
@@ -152,7 +152,7 @@ exports.getOrderDetails = asyncHandler(async (req, res) => {
      LEFT JOIN cities ci ON a.city_id = ci.id
      LEFT JOIN areas ar ON a.area_id = ar.id
      LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
-     WHERE o.id = ? AND o.position_id = 2`,
+     WHERE o.id = ? AND o.position_id = 2 AND o.is_active = 1`,
     [id]
   );
 
@@ -205,7 +205,7 @@ exports.addOrderToCart = asyncHandler(async (req, res) => {
 
     // Check if order exists and is under purchase
     const [[order]] = await connection.query(
-      'SELECT id, position_id, cart_id FROM orders WHERE id = ? AND position_id = 2',
+      'SELECT id, position_id, cart_id FROM orders WHERE id = ? AND position_id = 2 AND is_active = 1',
       [id]
     );
 
@@ -311,7 +311,7 @@ exports.removeOrderFromCart = asyncHandler(async (req, res) => {
 
     // Check if order exists and has a cart
     const [[order]] = await connection.query(
-      'SELECT id, cart_id FROM orders WHERE id = ? AND position_id = 2',
+      'SELECT id, cart_id FROM orders WHERE id = ? AND position_id = 2 AND is_active = 1',
       [id]
     );
 

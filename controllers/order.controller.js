@@ -8,7 +8,7 @@ const { successResponse, errorResponse, getPagination, buildPaginationResponse }
  * @access  Private
  */
 exports.getAllOrders = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, position_id, customer_id, is_archived, search } = req.query;
+  const { page = 1, limit = 20, position_id, customer_id, search } = req.query;
   const { limit: pageLimit, offset } = getPagination(page, limit);
 
   let query = `
@@ -27,7 +27,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     LEFT JOIN order_details od ON o.id = od.order_id
     LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
     LEFT JOIN brands b ON o.brand_id = b.id
-    WHERE 1=1
+    WHERE o.is_active = 1
   `;
 
   const params = [];
@@ -43,10 +43,6 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     params.push(customer_id);
   }
 
-  if (is_archived !== undefined) {
-    query += ' AND 1=1'; // Always true since is_archived column doesn't exist
-    params.push(is_archived === 'true' ? 1 : 0);
-  }
 
   if (search) {
     query += ` AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR od.title LIKE ?)`;
@@ -106,7 +102,7 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
 
   // Get total
   const [countResult] = await db.query(
-    'SELECT COUNT(*) as total FROM orders WHERE customer_id = ? AND is_archived = 0',
+    'SELECT COUNT(*) as total FROM orders WHERE customer_id = ? AND is_active = 1',
     [customerId]
   );
 
@@ -137,7 +133,7 @@ exports.getOrderById = asyncHandler(async (req, res) => {
      LEFT JOIN cities ci ON a.city_id = ci.id
      LEFT JOIN areas ar ON a.area_id = ar.id
      LEFT JOIN order_details od ON o.id = od.order_id
-     WHERE o.id = ?`,
+     WHERE o.id = ? AND o.is_active = 1`,
     [id]
   );
 
@@ -155,7 +151,7 @@ exports.getOrderById = asyncHandler(async (req, res) => {
     box_id: orders[0].box_id,
     barcode: orders[0].barcode,
     purchase_method: orders[0].purchase_method,
-    is_archived: orders[0].is_archived,
+    is_active: orders[0].is_active,
     created_at: orders[0].created_at,
     updated_at: orders[0].updated_at,
     customer: {
@@ -295,7 +291,7 @@ exports.updateOrder = asyncHandler(async (req, res) => {
     await connection.beginTransaction();
 
     const updates = req.body;
-    const allowedFields = ['cart_id', 'box_id', 'barcode', 'purchase_method', 'is_archived'];
+    const allowedFields = ['cart_id', 'box_id', 'barcode'];
     
     const updateFields = [];
     const updateValues = [];

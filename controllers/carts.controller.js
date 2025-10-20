@@ -19,9 +19,13 @@ const getAllCarts = asyncHandler(async (req, res) => {
       COUNT(o.id) as actual_orders_count,
       SUM(CASE WHEN o.position_id = 2 THEN 1 ELSE 0 END) as pending_orders,
       SUM(CASE WHEN o.position_id = 3 THEN 1 ELSE 0 END) as purchased_orders,
-      SUM(CASE WHEN o.position_id > 3 THEN 1 ELSE 0 END) as completed_orders
+      SUM(CASE WHEN o.position_id > 3 THEN 1 ELSE 0 END) as completed_orders,
+      pi.total as purchase_invoice_total,
+      pi.id as purchase_invoice_id,
+      CASE WHEN pi.invoice_image_base64 IS NOT NULL THEN 1 ELSE 0 END as has_pdf
     FROM cart c
-    LEFT JOIN orders o ON o.cart_id = c.id
+    LEFT JOIN orders o ON o.cart_id = c.id AND o.is_active = 1
+    LEFT JOIN purchase_invoices pi ON pi.cart_id = c.id
   `;
 
   const params = [];
@@ -48,10 +52,15 @@ const getAllCarts = asyncHandler(async (req, res) => {
   const [countResult] = await db.query(countQuery);
   const total = countResult[0].total;
 
-  // Format cart numbers
+  // Format cart numbers and add purchase invoice info
   const formattedCarts = carts.map(cart => ({
     ...cart,
-    cart_number: formatCartNumber(cart.id)
+    cart_number: formatCartNumber(cart.id),
+    purchase_invoice: {
+      id: cart.purchase_invoice_id,
+      total: cart.purchase_invoice_total,
+      has_pdf: !!cart.has_pdf
+    }
   }));
 
   successResponse(res, {
@@ -73,8 +82,18 @@ const getAllCarts = asyncHandler(async (req, res) => {
 const getCartById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // Get cart info
-  const [carts] = await db.query('SELECT * FROM cart WHERE id = ?', [id]);
+  // Get cart info with purchase invoice
+  const [carts] = await db.query(
+    `SELECT 
+      c.*,
+      pi.total as purchase_invoice_total,
+      pi.id as purchase_invoice_id,
+      CASE WHEN pi.invoice_image_base64 IS NOT NULL THEN 1 ELSE 0 END as has_pdf
+     FROM cart c
+     LEFT JOIN purchase_invoices pi ON pi.cart_id = c.id
+     WHERE c.id = ?`,
+    [id]
+  );
 
   if (carts.length === 0) {
     return errorResponse(res, 'السلة غير موجودة', 404);
@@ -124,7 +143,7 @@ const getCartById = asyncHandler(async (req, res) => {
     LEFT JOIN order_position op ON op.id = o.position_id
     LEFT JOIN brands b ON b.id = o.brand_id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
-    WHERE o.cart_id = ?
+    WHERE o.cart_id = ? AND o.is_active = 1
     ORDER BY o.created_at DESC`,
     [id]
   );
@@ -132,6 +151,11 @@ const getCartById = asyncHandler(async (req, res) => {
   const cartData = {
     ...carts[0],
     cart_number: formatCartNumber(carts[0].id),
+    purchase_invoice: {
+      id: carts[0].purchase_invoice_id,
+      total: carts[0].purchase_invoice_total,
+      has_pdf: !!carts[0].has_pdf
+    },
     orders
   };
 

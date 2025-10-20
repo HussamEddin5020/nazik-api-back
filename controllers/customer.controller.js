@@ -207,7 +207,7 @@ exports.getCustomerOrders = asyncHandler(async (req, res) => {
 
   // Get total
   const [countResult] = await db.query(
-    'SELECT COUNT(*) as total FROM orders WHERE customer_id = ? AND is_archived = 0',
+    'SELECT COUNT(*) as total FROM orders WHERE customer_id = ? AND is_active = 1',
     [id]
   );
 
