@@ -11,6 +11,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const {
     payment_method, // 'cash' or 'card'
+    purchase_method, // 'mall' or 'online'
     card_id, // إذا كان الدفع ببطاقة
     discount_amount = 0, // خصم Gift Card
     expenses_amount = 0, // مصاريف إضافية
@@ -22,6 +23,10 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
   // التحقق من صحة البيانات
   if (!payment_method || !['cash', 'card'].includes(payment_method)) {
     return errorResponse(res, 'طريقة الدفع غير صحيحة. يجب أن تكون cash أو card', 400);
+  }
+
+  if (!purchase_method || !['mall', 'online'].includes(purchase_method)) {
+    return errorResponse(res, 'طريقة الشراء غير صحيحة. يجب أن تكون mall أو online', 400);
   }
 
   if (payment_method === 'card' && !card_id) {
