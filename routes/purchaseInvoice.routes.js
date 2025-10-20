@@ -7,11 +7,11 @@ const {
   deletePurchaseInvoicePDF,
   getAllPurchaseInvoices
 } = require('../controllers/purchaseInvoice.controller');
-const { protect, authorize } = require('../middleware/auth');
+const { verifyToken, isStaff } = require('../middleware/auth');
 
 // جميع المسارات محمية ومتاحة للموظفين فقط
-router.use(protect);
-router.use(authorize('staff', 'admin'));
+router.use(verifyToken);
+router.use(isStaff);
 
 // جلب فاتورة الشراء لسلة معينة
 router.get('/cart/:cartId', getPurchaseInvoiceByCart);
