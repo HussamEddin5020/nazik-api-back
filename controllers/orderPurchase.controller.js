@@ -44,11 +44,11 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
 
     // 1. جلب معلومات الطلب من order_invoices
     const [orderResult] = await connection.query(
-      `SELECT o.id, o.cart_id, o.position_id,
+      `SELECT o.id, o.cart_id, o.position_id, o.order_invoice_id,
               oi.total_amount as order_total, od.title
        FROM orders o
        INNER JOIN order_details od ON od.order_id = o.id
-       INNER JOIN order_invoices oi ON oi.id = o.order_invoice_id
+       LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
        WHERE o.id = ? AND o.is_active = 1`,
       [orderId]
     );
@@ -66,9 +66,15 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
       return errorResponse(res, 'الطلب ليس في حالة "تحت الشراء". الحالة الحالية: ' + order.position_id, 400);
     }
 
+    // التحقق من وجود فاتورة للطلب
+    if (!order.order_invoice_id) {
+      await connection.rollback();
+      return errorResponse(res, 'الطلب لا يحتوي على فاتورة. يجب إنشاء فاتورة أولاً', 400);
+    }
+
     // 3. حساب المبلغ المطلوب دفعه
     const orderTotal = parseFloat(order.order_total) || 0;
-    const prepaidValue = parseFloat(order.prepaid_value) || 0;
+    const prepaidValue = 0; // لا يوجد prepaid_value في النظام الحالي
     const discountAmount = parseFloat(discount_amount) || 0;
     const expensesAmount = parseFloat(expenses_amount) || 0;
 
@@ -143,7 +149,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
       }
     }
 
-    // 5. تحديث الفاتورة الموجودة بدلاً من إنشاء فاتورة جديدة
+    // 5. تحديث الفاتورة الموجودة
     const [updateResult] = await connection.query(
       `UPDATE order_invoices SET 
         payment_method = ?, 
@@ -154,7 +160,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
         discount_amount = ?,
         expenses_amount = ?,
         expenses_notes = ?
-       WHERE id = (SELECT order_invoice_id FROM orders WHERE id = ?)`,
+       WHERE id = ?`,
       [
         payment_method,
         purchase_method,
@@ -164,25 +170,25 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
         discountAmount,
         expensesAmount,
         expenses_notes,
-        orderId
+        order.order_invoice_id
       ]
     );
 
     // جلب invoice_id و invoice_number من الفاتورة المحدثة
     const [invoiceResult] = await connection.query(
-      'SELECT id, invoice_number FROM order_invoices WHERE id = (SELECT order_invoice_id FROM orders WHERE id = ?)',
-      [orderId]
+      'SELECT id, invoice_number FROM order_invoices WHERE id = ?',
+      [order.order_invoice_id]
     );
 
     const invoiceId = invoiceResult[0].id;
     const invoiceNumber = invoiceResult[0].invoice_number;
 
-    // 6. تحديث الطلب: position_id = 3 و ربط الفاتورة
+    // 6. تحديث الطلب: position_id = 3
     await connection.query(
       `UPDATE orders 
-       SET position_id = 3, order_invoice_id = ?, updated_at = NOW()
+       SET position_id = 3, updated_at = NOW()
        WHERE id = ?`,
-      [invoiceId, orderId]
+      [orderId]
     );
 
     // 7. التحقق من جميع الطلبات في السلة وإغلاقها تلقائياً إذا تم شراء الكل
@@ -322,7 +328,7 @@ async function calculateAndUpdateCartTotal(connection, cartId) {
         oi.expenses_amount,
         oi.discount_amount
        FROM orders o
-       INNER JOIN order_invoices oi ON o.order_invoice_id = oi.id
+       INNER JOIN order_invoices oi ON oi.id = o.order_invoice_id
        WHERE o.cart_id = ? AND o.is_active = 1`,
       [cartId]
     );
