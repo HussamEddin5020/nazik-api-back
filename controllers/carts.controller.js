@@ -20,9 +20,9 @@ const getAllCarts = asyncHandler(async (req, res) => {
       SUM(CASE WHEN o.position_id = 2 THEN 1 ELSE 0 END) as pending_orders,
       SUM(CASE WHEN o.position_id = 3 THEN 1 ELSE 0 END) as purchased_orders,
       SUM(CASE WHEN o.position_id > 3 THEN 1 ELSE 0 END) as completed_orders,
-      pi.total as purchase_invoice_total,
-      pi.id as purchase_invoice_id,
-      CASE WHEN pi.invoice_image_base64 IS NOT NULL THEN 1 ELSE 0 END as has_pdf
+      MAX(pi.total) as purchase_invoice_total,
+      MAX(pi.id) as purchase_invoice_id,
+      MAX(CASE WHEN pi.invoice_image_base64 IS NOT NULL THEN 1 ELSE 0 END) as has_pdf
     FROM cart c
     LEFT JOIN orders o ON o.cart_id = c.id AND o.is_active = 1
     LEFT JOIN purchase_invoices pi ON pi.cart_id = c.id
@@ -52,13 +52,13 @@ const getAllCarts = asyncHandler(async (req, res) => {
   const [countResult] = await db.query(countQuery);
   const total = countResult[0].total;
 
-  // Format cart numbers and add purchase invoice info
+  // Format cart numbers and add purchase invoice info (preserve nulls)
   const formattedCarts = carts.map(cart => ({
     ...cart,
     cart_number: formatCartNumber(cart.id),
     purchase_invoice: {
-      id: cart.purchase_invoice_id,
-      total: cart.purchase_invoice_total,
+      id: cart.purchase_invoice_id ?? null,
+      total: cart.purchase_invoice_total ?? null,
       has_pdf: !!cart.has_pdf
     }
   }));
