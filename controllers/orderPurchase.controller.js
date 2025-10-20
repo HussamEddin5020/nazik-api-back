@@ -375,10 +375,10 @@ async function calculateAndUpdateCartTotal(connection, cartId) {
       );
       console.log(`✅ تم تحديث فاتورة الشراء للسلة ${cartId}: ${finalTotal}`);
     } else {
-      // إنشاء فاتورة جديدة
+      // إنشاء فاتورة جديدة (بدون created_at لأنه غير موجود في الجدول)
       await connection.query(
-        'INSERT INTO purchase_invoices (cart_id, total, created_at) VALUES (?, ?, NOW())',
-        [cartId, finalTotal]
+        'INSERT INTO purchase_invoices (cart_id, total, invoice_image_base64) VALUES (?, ?, ?)',
+        [cartId, finalTotal, '']
       );
       console.log(`✅ تم إنشاء فاتورة شراء جديدة للسلة ${cartId}: ${finalTotal}`);
     }
