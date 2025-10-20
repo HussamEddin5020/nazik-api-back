@@ -48,7 +48,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
               oi.total_amount as order_total, od.title
        FROM orders o
        INNER JOIN order_details od ON od.order_id = o.id
-       INNER JOIN order_invoices oi ON oi.order_id = o.id
+       INNER JOIN order_invoices oi ON oi.id = o.order_invoice_id
        WHERE o.id = ? AND o.is_active = 1`,
       [orderId]
     );
@@ -154,7 +154,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
         discount_amount = ?,
         expenses_amount = ?,
         expenses_notes = ?
-       WHERE order_id = ?`,
+       WHERE id = (SELECT order_invoice_id FROM orders WHERE id = ?)`,
       [
         payment_method,
         purchase_method,
@@ -170,7 +170,7 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
 
     // جلب invoice_id و invoice_number من الفاتورة المحدثة
     const [invoiceResult] = await connection.query(
-      'SELECT id, invoice_number FROM order_invoices WHERE order_id = ?',
+      'SELECT id, invoice_number FROM order_invoices WHERE id = (SELECT order_invoice_id FROM orders WHERE id = ?)',
       [orderId]
     );
 
@@ -281,7 +281,7 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN order_position op ON op.id = o.position_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    LEFT JOIN order_invoices oi ON oi.order_id = o.id
+    LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
     WHERE o.id = ? AND o.is_active = 1`,
     [orderId]
   );
