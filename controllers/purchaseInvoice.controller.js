@@ -18,8 +18,6 @@ exports.getPurchaseInvoiceByCart = asyncHandler(async (req, res) => {
       pi.cart_id,
       pi.total,
       pi.invoice_image_base64,
-      pi.created_at,
-      pi.updated_at,
       c.orders_count,
       c.is_available as cart_is_available
      FROM purchase_invoices pi
@@ -39,10 +37,7 @@ exports.getPurchaseInvoiceByCart = asyncHandler(async (req, res) => {
       id: invoice.id,
       cart_id: invoice.cart_id,
       total: invoice.total,
-      has_pdf: !!invoice.invoice_image_base64,
-      pdf_base64: invoice.invoice_image_base64,
-      created_at: invoice.created_at,
-      updated_at: invoice.updated_at,
+      invoice_image_base64: invoice.invoice_image_base64,
       cart_info: {
         orders_count: invoice.orders_count,
         is_available: invoice.cart_is_available
@@ -85,7 +80,7 @@ exports.uploadPurchaseInvoicePDF = asyncHandler(async (req, res) => {
 
   // تحديث قاعدة البيانات
   await db.query(
-    'UPDATE purchase_invoices SET invoice_image_base64 = ?, updated_at = NOW() WHERE cart_id = ?',
+    'UPDATE purchase_invoices SET invoice_image_base64 = ? WHERE cart_id = ?',
     [pdf_base64, cartId]
   );
 
@@ -139,7 +134,7 @@ exports.deletePurchaseInvoicePDF = asyncHandler(async (req, res) => {
   console.log(`🗑️ حذف ملف PDF لفاتورة الشراء للسلة ${cartId}`);
 
   const [result] = await db.query(
-    'UPDATE purchase_invoices SET invoice_image_base64 = NULL, updated_at = NOW() WHERE cart_id = ?',
+    'UPDATE purchase_invoices SET invoice_image_base64 = NULL WHERE cart_id = ?',
     [cartId]
   );
 
@@ -171,9 +166,7 @@ exports.getAllPurchaseInvoices = asyncHandler(async (req, res) => {
       pi.id,
       pi.cart_id,
       pi.total,
-      pi.has_pdf,
-      pi.created_at,
-      pi.updated_at,
+      pi.invoice_image_base64,
       c.orders_count,
       c.is_available as cart_is_available,
       COUNT(o.id) as actual_orders_count
@@ -192,8 +185,8 @@ exports.getAllPurchaseInvoices = asyncHandler(async (req, res) => {
   }
 
   query += `
-    GROUP BY pi.id, pi.cart_id, pi.total, pi.has_pdf, pi.created_at, pi.updated_at, c.orders_count, c.is_available
-    ORDER BY pi.created_at DESC
+    GROUP BY pi.id, pi.cart_id, pi.total, pi.invoice_image_base64, c.orders_count, c.is_available
+    ORDER BY pi.id DESC
     LIMIT ? OFFSET ?
   `;
 
@@ -225,9 +218,7 @@ exports.getAllPurchaseInvoices = asyncHandler(async (req, res) => {
       id: invoice.id,
       cart_id: invoice.cart_id,
       total: invoice.total,
-      has_pdf: !!invoice.has_pdf,
-      created_at: invoice.created_at,
-      updated_at: invoice.updated_at,
+      invoice_image_base64: invoice.invoice_image_base64,
       cart_info: {
         orders_count: invoice.orders_count,
         actual_orders_count: invoice.actual_orders_count,
