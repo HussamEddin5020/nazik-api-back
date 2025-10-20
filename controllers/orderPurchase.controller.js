@@ -11,7 +11,6 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const {
     payment_method, // 'cash' or 'card'
-    purchase_method, // 'mall' or 'online'
     card_id, // إذا كان الدفع ببطاقة
     discount_amount = 0, // خصم Gift Card
     expenses_amount = 0, // مصاريف إضافية
@@ -23,10 +22,6 @@ const confirmOrderPurchase = asyncHandler(async (req, res) => {
   // التحقق من صحة البيانات
   if (!payment_method || !['cash', 'card'].includes(payment_method)) {
     return errorResponse(res, 'طريقة الدفع غير صحيحة. يجب أن تكون cash أو card', 400);
-  }
-
-  if (!purchase_method || !['mall', 'online'].includes(purchase_method)) {
-    return errorResponse(res, 'طريقة الشراء غير صحيحة. يجب أن تكون mall أو online', 400);
   }
 
   if (payment_method === 'card' && !card_id) {
@@ -259,10 +254,12 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
       o.id,
       o.position_id,
       o.cart_id,
+      o.purchase_method,
       o.order_invoice_id,
       od.title,
       od.description,
       od.image_url,
+      od.prepaid_value,
       -- الأسعار الحقيقية من order_invoices
       oi.item_price as original_product_price,
       oi.item_price as commission, -- نفس السعر مؤقتاً
@@ -288,7 +285,7 @@ const getOrderPurchaseDetails = asyncHandler(async (req, res) => {
     INNER JOIN order_position op ON op.id = o.position_id
     LEFT JOIN brands b ON b.id = o.brand_id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
-    WHERE o.id = ? AND o.is_active = 1`,
+    WHERE o.id = ?`,
     [orderId]
   );
 
