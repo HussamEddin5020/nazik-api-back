@@ -10,6 +10,7 @@ const {
   getAvailableOrdersByCart,
   addOrderToBox,
   removeOrderFromBox,
+  openSingleBox,
 } = require('../controllers/boxes.controller');
 const { verifyToken } = require('../middleware/auth');
 
@@ -36,6 +37,7 @@ router.get('/available-carts/:cartId/orders', getAvailableOrdersByCart); // NEW:
 router.post('/', createBox);
 router.get('/:id', getBoxById);
 router.put('/:id/close', closeBox);
+router.put('/:id/open', openSingleBox); // NEW: Open single box
 router.put('/:boxId/orders/:orderId', addOrderToBox);
 router.delete('/:boxId/orders/:orderId', removeOrderFromBox);
 

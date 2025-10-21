@@ -475,6 +475,7 @@ const getDeliveredShipments = asyncHandler(async (req, res) => {
       sc.company_name,
       ss.name as status_name,
       COUNT(DISTINCT b.id) as boxes_count,
+      COUNT(DISTINCT CASE WHEN b.status_id = 3 THEN b.id END) as unopened_boxes_count,
       COUNT(DISTINCT o.id) as orders_count
     FROM shipments s
     LEFT JOIN shipping_companies sc ON sc.id = s.company_id
@@ -483,14 +484,23 @@ const getDeliveredShipments = asyncHandler(async (req, res) => {
     LEFT JOIN orders o ON o.box_id = b.id AND o.position_id = 5 AND o.is_active = 1
     WHERE s.status_id = 3
     GROUP BY s.id, s.company_id, s.sender_name, s.weight, s.status_id, sc.company_name, ss.name
+    HAVING unopened_boxes_count > 0
     ORDER BY s.id DESC
     LIMIT ? OFFSET ?`,
     [parseInt(limit), offset]
   );
 
-  // Get total count
+  // Get total count (only shipments with unopened boxes)
   const [countResult] = await db.query(
-    `SELECT COUNT(*) as total FROM shipments s WHERE s.status_id = 3`
+    `SELECT COUNT(*) as total 
+     FROM (
+       SELECT s.id
+       FROM shipments s
+       LEFT JOIN box b ON b.shipment_id = s.id
+       WHERE s.status_id = 3
+       GROUP BY s.id
+       HAVING COUNT(DISTINCT CASE WHEN b.status_id = 3 THEN b.id END) > 0
+     ) as subquery`
   );
 
   const total = countResult[0].total;
@@ -659,22 +669,25 @@ const getBoxOrders = asyncHandler(async (req, res) => {
 
   const shipment = shipmentResult[0];
 
-  // Get all boxes linked to this shipment
+  // Get only unopened boxes (status_id = 3) linked to this shipment
   const [boxesResult] = await db.query(
     `SELECT 
       b.id,
       b.number,
       b.orders_count,
       b.status_id,
-      bs.name as status_name
+      bs.name as status_name,
+      COUNT(DISTINCT o.id) as actual_orders_count
     FROM box b
     LEFT JOIN box_status bs ON bs.id = b.status_id
-    WHERE b.shipment_id = ?
+    LEFT JOIN orders o ON o.box_id = b.id AND o.position_id = 5 AND o.is_active = 1
+    WHERE b.shipment_id = ? AND b.status_id = 3
+    GROUP BY b.id, b.number, b.orders_count, b.status_id, bs.name
     ORDER BY b.id ASC`,
     [id]
   );
 
-  // Get orders in all boxes with position_id = 5
+  // Get orders only from unopened boxes (status_id = 3) with position_id = 5
   const [ordersResult] = await db.query(
     `SELECT 
       o.id,
@@ -703,7 +716,7 @@ const getBoxOrders = asyncHandler(async (req, res) => {
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
     INNER JOIN box bx ON bx.id = o.box_id
-    WHERE bx.shipment_id = ? AND o.position_id = 5 AND o.is_active = 1
+    WHERE bx.shipment_id = ? AND bx.status_id = 3 AND o.position_id = 5 AND o.is_active = 1
     ORDER BY o.box_id ASC, o.created_at DESC`,
     [id]
   );

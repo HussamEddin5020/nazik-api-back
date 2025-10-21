@@ -549,6 +549,122 @@ const removeOrderFromBox = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * @desc    Open single box - Update box status and orders
+ * @route   PUT /api/v1/boxes/:id/open
+ * @access  Private (User only)
+ */
+const openSingleBox = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
+
+  try {
+    // Check if box exists and get shipment info
+    const [boxResult] = await connection.query(
+      `SELECT b.id, b.shipment_id, b.status_id, s.status_id as shipment_status
+       FROM box b
+       INNER JOIN shipments s ON s.id = b.shipment_id
+       WHERE b.id = ?`,
+      [id]
+    );
+
+    if (boxResult.length === 0) {
+      await connection.rollback();
+      return errorResponse(res, 'الصندوق غير موجود', 404);
+    }
+
+    const box = boxResult[0];
+
+    // Check if shipment is delivered
+    if (box.shipment_status !== 3) {
+      await connection.rollback();
+      return errorResponse(res, 'الشحنة لم تصل بعد', 400);
+    }
+
+    // Check if box is in delivered status
+    if (box.status_id !== 3) {
+      await connection.rollback();
+      return errorResponse(res, 'الصندوق ليس في حالة الوصول', 400);
+    }
+
+    // Update box status to "opened and collected" (status_id = 4)
+    await connection.query(
+      'UPDATE box SET status_id = 4 WHERE id = ?',
+      [id]
+    );
+
+    // Update orders from position_id 5 to 6
+    const [updateResult] = await connection.query(
+      `UPDATE orders 
+       SET position_id = 6 
+       WHERE box_id = ? AND position_id = 5 AND is_active = 1`,
+      [id]
+    );
+
+    // Get all collections that have orders in this box
+    const [collectionsResult] = await connection.query(
+      `SELECT DISTINCT collection_id 
+       FROM orders 
+       WHERE box_id = ? AND collection_id IS NOT NULL AND is_active = 1`,
+      [id]
+    );
+
+    let collectionsUpdated = 0;
+
+    // Update collection status for each collection
+    for (const collection of collectionsResult) {
+      const collectionId = collection.collection_id;
+      
+      // Check if all orders in this collection have position_id = 6 (opened)
+      const [allOrdersResult] = await connection.query(
+        `SELECT COUNT(*) as total_orders,
+                SUM(CASE WHEN position_id = 6 THEN 1 ELSE 0 END) as opened_orders
+         FROM orders 
+         WHERE collection_id = ? AND is_active = 1`,
+        [collectionId]
+      );
+
+      const { total_orders, opened_orders } = allOrdersResult[0];
+      
+      let newStatus;
+      if (opened_orders === total_orders) {
+        // All orders are opened (position_id = 6) - Collection fully received
+        newStatus = 3;
+      } else if (opened_orders > 0) {
+        // Some orders are opened - Collection partially received
+        newStatus = 2;
+      } else {
+        // No orders opened yet - Collection still under process
+        newStatus = 1;
+      }
+
+      // Update collection status
+      await connection.query(
+        'UPDATE collections SET status = ? WHERE id = ?',
+        [newStatus, collectionId]
+      );
+      
+      collectionsUpdated++;
+    }
+
+    await connection.commit();
+
+    successResponse(res, {
+      box_id: parseInt(id),
+      orders_updated: updateResult.affectedRows,
+      collections_updated: collectionsUpdated
+    }, `تم فتح الصندوق بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الفتح و ${collectionsUpdated} مجموعة`);
+
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
 module.exports = {
   getAllBoxes,
   getBoxById,
@@ -559,4 +675,5 @@ module.exports = {
   getAvailableOrdersByCart,
   addOrderToBox,
   removeOrderFromBox,
+  openSingleBox,
 };
