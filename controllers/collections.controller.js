@@ -16,6 +16,19 @@ const getStatusName = (status) => {
   }
 };
 
+// Helper function to update collection status in database
+const updateCollectionStatus = async (collectionId, calculatedStatus) => {
+  try {
+    await db.query(
+      'UPDATE collections SET status = ? WHERE id = ?',
+      [calculatedStatus, collectionId]
+    );
+    console.log(`✅ Updated collection ${collectionId} status to ${calculatedStatus}`);
+  } catch (error) {
+    console.error(`❌ Error updating collection ${collectionId} status:`, error);
+  }
+};
+
 /**
  * @desc    Get all collections with dynamic status calculation
  * @route   GET /api/v1/collections
@@ -63,8 +76,8 @@ const getAllCollections = asyncHandler(async (req, res) => {
 
   const [collections] = await db.query(query, [...queryParams, parseInt(limit), offset]);
 
-  // Calculate dynamic status for each collection
-  const enhancedCollections = collections.map(col => {
+  // Calculate dynamic status for each collection and update database
+  const enhancedCollections = await Promise.all(collections.map(async col => {
     let calculatedStatus = 1;
     
     if (col.ready_orders === col.total_orders && col.total_orders > 0) {
@@ -73,12 +86,17 @@ const getAllCollections = asyncHandler(async (req, res) => {
       calculatedStatus = 2; // تجميع جزئي
     }
     
+    // Update collection status in database if different
+    if (col.status !== calculatedStatus) {
+      await updateCollectionStatus(col.id, calculatedStatus);
+    }
+    
     return {
       ...col,
       calculated_status: calculatedStatus,
       status_name: getStatusName(calculatedStatus)
     };
-  });
+  }));
 
   // Filter by calculated status if requested
   let filteredCollections = enhancedCollections;
@@ -187,6 +205,11 @@ const getCollectionById = asyncHandler(async (req, res) => {
     calculatedStatus = 2; // تجميع جزئي
   }
 
+  // Update collection status in database if different
+  if (collection.status !== calculatedStatus) {
+    await updateCollectionStatus(collection.id, calculatedStatus);
+  }
+
   const collectionData = {
     ...collection,
     orders: ordersResult,
@@ -236,6 +259,31 @@ const sendOrderToDelivery = asyncHandler(async (req, res) => {
     await connection.query(
       'UPDATE orders SET position_id = 7 WHERE id = ?',
       [orderId]
+    );
+
+    // Calculate new collection status after order update
+    const [statusCheck] = await connection.query(`
+      SELECT 
+        COUNT(*) as total_orders,
+        COUNT(CASE WHEN position_id >= 6 THEN 1 END) as received_orders,
+        COUNT(CASE WHEN position_id = 6 THEN 1 END) as ready_orders
+      FROM orders 
+      WHERE collection_id = ? AND is_active = 1
+    `, [collectionId]);
+
+    const { total_orders, received_orders, ready_orders } = statusCheck[0];
+    let newCalculatedStatus = 1;
+    
+    if (ready_orders === total_orders && total_orders > 0) {
+      newCalculatedStatus = 3; // تجميع كلي
+    } else if (received_orders > 0) {
+      newCalculatedStatus = 2; // تجميع جزئي
+    }
+
+    // Update collection status in database
+    await connection.query(
+      'UPDATE collections SET status = ? WHERE id = ?',
+      [newCalculatedStatus, collectionId]
     );
 
     await connection.commit();
@@ -301,6 +349,12 @@ const sendAllCollectionOrders = asyncHandler(async (req, res) => {
     // Update all orders to delivery (position_id = 7)
     const [updateResult] = await connection.query(
       'UPDATE orders SET position_id = 7 WHERE collection_id = ? AND position_id = 6 AND is_active = 1',
+      [id]
+    );
+
+    // Update collection status to fully completed (status = 3)
+    await connection.query(
+      'UPDATE collections SET status = 3 WHERE id = ?',
       [id]
     );
 
