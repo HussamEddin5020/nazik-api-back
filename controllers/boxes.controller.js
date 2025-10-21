@@ -194,9 +194,9 @@ const closeBox = asyncHandler(async (req, res) => {
       return errorResponse(res, 'الصندوق مغلق بالفعل', 400);
     }
 
-    // Close the box
+    // Close the box and update status to "جاري الشحن"
     await connection.query(
-      'UPDATE box SET is_available = 0 WHERE id = ?',
+      'UPDATE box SET is_available = 0, status_id = 2 WHERE id = ?',
       [id]
     );
 
