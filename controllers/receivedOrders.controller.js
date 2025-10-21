@@ -49,9 +49,8 @@ const getAllReceivedOrders = asyncHandler(async (req, res) => {
     LEFT JOIN order_details od ON od.order_id = o.id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    LEFT JOIN cart c ON c.id = o.cart_id
-    LEFT JOIN customers cust ON cust.id = c.customer_id
-    LEFT JOIN users u ON u.id = cust.user_id
+    LEFT JOIN customers c ON c.id = o.customer_id
+    LEFT JOIN users u ON u.id = c.user_id
     LEFT JOIN collections col ON col.id = o.collection_id
     ${whereClause}
     ORDER BY o.updated_at DESC
@@ -65,9 +64,8 @@ const getAllReceivedOrders = asyncHandler(async (req, res) => {
     SELECT COUNT(DISTINCT o.id) as total
     FROM orders o
     LEFT JOIN order_details od ON od.order_id = o.id
-    LEFT JOIN cart c ON c.id = o.cart_id
-    LEFT JOIN customers cust ON cust.id = c.customer_id
-    LEFT JOIN users u ON u.id = cust.user_id
+    LEFT JOIN customers c ON c.id = o.customer_id
+    LEFT JOIN users u ON u.id = c.user_id
     ${whereClause}
   `;
 
@@ -124,9 +122,8 @@ const getReceivedOrderById = asyncHandler(async (req, res) => {
     LEFT JOIN order_details od ON od.order_id = o.id
     LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    LEFT JOIN cart c ON c.id = o.cart_id
-    LEFT JOIN customers cust ON cust.id = c.customer_id
-    LEFT JOIN users u ON u.id = cust.user_id
+    LEFT JOIN customers c ON c.id = o.customer_id
+    LEFT JOIN users u ON u.id = c.user_id
     LEFT JOIN collections col ON col.id = o.collection_id
     WHERE o.id = ? AND o.position_id = 8 AND o.is_active = 1`,
     [id]
