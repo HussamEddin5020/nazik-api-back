@@ -495,3 +495,4 @@ exports.getUserEffectivePermissions = asyncHandler(async (req, res) => {
 
   successResponse(res, { permissions });
 });
+

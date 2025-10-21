@@ -151,3 +151,4 @@ DELIMITER ;
 -- ✅ تم إصلاح جميع الـ Triggers بنجاح
 SELECT '✅ تم إصلاح Triggers جدول purchase_invoices بنجاح' AS status;
 
+

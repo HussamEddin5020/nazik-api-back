@@ -108,3 +108,4 @@ SELECT * FROM v_user_permissions WHERE user_id = 1001000039;
 COMMIT;
 
 SELECT 'تم منح كافة الصلاحيات للمستخدم 1001000039 بنجاح!' as final_message;
+

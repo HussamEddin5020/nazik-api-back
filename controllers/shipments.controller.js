@@ -547,6 +547,14 @@ const openBox = asyncHandler(async (req, res) => {
       [id]
     );
 
+    // Update all boxes status to "opened and collected" (status_id = 4)
+    await connection.query(
+      `UPDATE box 
+       SET status_id = 4 
+       WHERE shipment_id = ?`,
+      [id]
+    );
+
     // Update all orders in all boxes from position_id 5 to 6
     const [updateResult] = await connection.query(
       `UPDATE orders o
