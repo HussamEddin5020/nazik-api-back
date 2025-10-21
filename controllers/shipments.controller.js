@@ -22,19 +22,21 @@ const getAllShipments = asyncHandler(async (req, res) => {
   const [shipments] = await db.query(
     `SELECT 
       s.id,
-      s.box_id,
       s.company_id,
       s.sender_name,
       s.weight,
       s.status_id,
-      b.number as box_number,
       sc.company_name,
-      ss.name as status_name
+      ss.name as status_name,
+      COUNT(DISTINCT b.id) as boxes_count,
+      COUNT(DISTINCT o.id) as orders_count
     FROM shipments s
-    LEFT JOIN box b ON b.id = s.box_id
     LEFT JOIN shipping_companies sc ON sc.id = s.company_id
     LEFT JOIN shipment_status ss ON ss.id = s.status_id
+    LEFT JOIN box b ON b.shipment_id = s.id
+    LEFT JOIN orders o ON o.box_id = b.id AND o.is_active = 1
     ${whereClause}
+    GROUP BY s.id, s.company_id, s.sender_name, s.weight, s.status_id, sc.company_name, ss.name
     ORDER BY s.id DESC
     LIMIT ? OFFSET ?`,
     [...queryParams, parseInt(limit), offset]
@@ -69,7 +71,7 @@ const getAllShipments = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get shipment by ID with box and orders details
+ * @desc    Get shipment by ID with boxes and orders details
  * @route   GET /api/v1/shipments/:id
  * @access  Private (User only)
  */
@@ -80,16 +82,13 @@ const getShipmentById = asyncHandler(async (req, res) => {
   const [shipmentResult] = await db.query(
     `SELECT 
       s.id,
-      s.box_id,
       s.company_id,
       s.sender_name,
       s.weight,
       s.status_id,
-      b.number as box_number,
       sc.company_name,
       ss.name as status_name
     FROM shipments s
-    LEFT JOIN box b ON b.id = s.box_id
     LEFT JOIN shipping_companies sc ON sc.id = s.company_id
     LEFT JOIN shipment_status ss ON ss.id = s.status_id
     WHERE s.id = ?`,
@@ -102,10 +101,29 @@ const getShipmentById = asyncHandler(async (req, res) => {
 
   const shipment = shipmentResult[0];
 
-  // Get orders in the box
+  // Get all boxes linked to this shipment
+  const [boxesResult] = await db.query(
+    `SELECT 
+      b.id,
+      b.number,
+      b.orders_count,
+      b.status_id,
+      bs.name as status_name,
+      COUNT(o.id) as actual_orders_count
+    FROM box b
+    LEFT JOIN box_status bs ON bs.id = b.status_id
+    LEFT JOIN orders o ON o.box_id = b.id AND o.is_active = 1
+    WHERE b.shipment_id = ?
+    GROUP BY b.id, b.number, b.orders_count, b.status_id, bs.name
+    ORDER BY b.id ASC`,
+    [id]
+  );
+
+  // Get all orders from all boxes in this shipment
   const [ordersResult] = await db.query(
     `SELECT 
       o.id,
+      o.box_id,
       o.position_id,
       op.name as position_name,
       od.title,
@@ -129,13 +147,15 @@ const getShipmentById = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.box_id = ? AND o.is_active = 1
-    ORDER BY o.created_at DESC`,
-    [shipment.box_id]
+    INNER JOIN box bx ON bx.id = o.box_id
+    WHERE bx.shipment_id = ? AND o.is_active = 1
+    ORDER BY o.box_id ASC, o.created_at DESC`,
+    [id]
   );
 
   const shipmentData = {
     ...shipment,
+    boxes: boxesResult,
     orders: ordersResult
   };
 
@@ -148,74 +168,102 @@ const getShipmentById = asyncHandler(async (req, res) => {
  * @access  Private (User only)
  */
 const createShipment = asyncHandler(async (req, res) => {
-  const { box_id, company_id, sender_name, weight } = req.body;
+  const { box_ids, company_id, sender_name, weight } = req.body;
 
   // Validate required fields
-  if (!box_id || !company_id || !sender_name || !weight) {
+  if (!box_ids || !Array.isArray(box_ids) || box_ids.length === 0) {
+    return errorResponse(res, 'يجب اختيار صندوق واحد على الأقل', 400);
+  }
+
+  if (!company_id || !sender_name || !weight) {
     return errorResponse(res, 'جميع الحقول مطلوبة', 400);
   }
 
-  // Check if box exists and is closed
-  const [boxResult] = await db.query(
-    'SELECT id, is_available FROM box WHERE id = ?',
-    [box_id]
-  );
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
 
-  if (boxResult.length === 0) {
-    return errorResponse(res, 'الصندوق غير موجود', 404);
+  try {
+    // Check if company exists
+    const [companyResult] = await connection.query(
+      'SELECT id FROM shipping_companies WHERE id = ?',
+      [company_id]
+    );
+
+    if (companyResult.length === 0) {
+      await connection.rollback();
+      return errorResponse(res, 'شركة الشحن غير موجودة', 404);
+    }
+
+    // Validate all boxes
+    for (const boxId of box_ids) {
+      // Check if box exists and is closed
+      const [boxResult] = await connection.query(
+        'SELECT id, is_available, shipment_id FROM box WHERE id = ?',
+        [boxId]
+      );
+
+      if (boxResult.length === 0) {
+        await connection.rollback();
+        return errorResponse(res, `الصندوق ${boxId} غير موجود`, 404);
+      }
+
+      if (boxResult[0].is_available === 1) {
+        await connection.rollback();
+        return errorResponse(res, `الصندوق ${boxId} مازال مفتوح، يجب إغلاقه أولاً`, 400);
+      }
+
+      if (boxResult[0].shipment_id !== null) {
+        await connection.rollback();
+        return errorResponse(res, `الصندوق ${boxId} مرتبط بشحنة أخرى بالفعل`, 400);
+      }
+    }
+
+    // Create shipment
+    const [result] = await connection.query(
+      'INSERT INTO shipments (company_id, sender_name, weight, status_id) VALUES (?, ?, ?, 1)',
+      [company_id, sender_name, weight]
+    );
+
+    const shipmentId = result.insertId;
+
+    // Link boxes to shipment
+    for (const boxId of box_ids) {
+      await connection.query(
+        'UPDATE box SET shipment_id = ? WHERE id = ?',
+        [shipmentId, boxId]
+      );
+    }
+
+    await connection.commit();
+
+    // Get created shipment with boxes info
+    const [newShipment] = await connection.query(
+      `SELECT 
+        s.id,
+        s.company_id,
+        s.sender_name,
+        s.weight,
+        s.status_id,
+        sc.company_name,
+        ss.name as status_name,
+        COUNT(b.id) as boxes_count
+      FROM shipments s
+      LEFT JOIN shipping_companies sc ON sc.id = s.company_id
+      LEFT JOIN shipment_status ss ON ss.id = s.status_id
+      LEFT JOIN box b ON b.shipment_id = s.id
+      WHERE s.id = ?
+      GROUP BY s.id, s.company_id, s.sender_name, s.weight, s.status_id, sc.company_name, ss.name`,
+      [shipmentId]
+    );
+
+    successResponse(res, newShipment[0], 'تم إنشاء الشحنة وربط الصناديق بنجاح', 201);
+
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
-
-  if (boxResult[0].is_available === 1) {
-    return errorResponse(res, 'الصندوق مازال مفتوح، يجب إغلاقه أولاً', 400);
-  }
-
-  // Check if box already has a shipment
-  const [existingShipment] = await db.query(
-    'SELECT id FROM shipments WHERE box_id = ?',
-    [box_id]
-  );
-
-  if (existingShipment.length > 0) {
-    return errorResponse(res, 'هذا الصندوق له شحنة موجودة بالفعل', 400);
-  }
-
-  // Check if company exists
-  const [companyResult] = await db.query(
-    'SELECT id FROM shipping_companies WHERE id = ?',
-    [company_id]
-  );
-
-  if (companyResult.length === 0) {
-    return errorResponse(res, 'شركة الشحن غير موجودة', 404);
-  }
-
-  // Create shipment
-  const [result] = await db.query(
-    'INSERT INTO shipments (box_id, company_id, sender_name, weight, status_id) VALUES (?, ?, ?, ?, 1)',
-    [box_id, company_id, sender_name, weight]
-  );
-
-  // Get created shipment
-  const [newShipment] = await db.query(
-    `SELECT 
-      s.id,
-      s.box_id,
-      s.company_id,
-      s.sender_name,
-      s.weight,
-      s.status_id,
-      b.number as box_number,
-      sc.company_name,
-      ss.name as status_name
-    FROM shipments s
-    LEFT JOIN box b ON b.id = s.box_id
-    LEFT JOIN shipping_companies sc ON sc.id = s.company_id
-    LEFT JOIN shipment_status ss ON ss.id = s.status_id
-    WHERE s.id = ?`,
-    [result.insertId]
-  );
-
-  successResponse(res, newShipment[0], 'تم إنشاء الشحنة بنجاح', 201);
 });
 
 /**
@@ -232,7 +280,7 @@ const sendShipment = asyncHandler(async (req, res) => {
   try {
     // Check if shipment exists and is ready to ship
     const [shipmentResult] = await connection.query(
-      'SELECT id, box_id, status_id FROM shipments WHERE id = ?',
+      'SELECT id, status_id FROM shipments WHERE id = ?',
       [id]
     );
 
@@ -248,25 +296,45 @@ const sendShipment = asyncHandler(async (req, res) => {
       return errorResponse(res, 'الشحنة ليست جاهزة للإرسال', 400);
     }
 
+    // Get all boxes linked to this shipment
+    const [boxesResult] = await connection.query(
+      'SELECT id FROM box WHERE shipment_id = ?',
+      [id]
+    );
+
+    if (boxesResult.length === 0) {
+      await connection.rollback();
+      return errorResponse(res, 'لا توجد صناديق مرتبطة بهذه الشحنة', 400);
+    }
+
     // Update shipment status to "جاري الشحن" (status_id = 2)
     await connection.query(
       'UPDATE shipments SET status_id = 2 WHERE id = ?',
       [id]
     );
 
-    // Update all orders in the box from position_id 3 to 4 (shipping)
+    // Update box status to "جاري الشحن" (status_id = 2)
+    await connection.query(
+      'UPDATE box SET status_id = 2 WHERE shipment_id = ?',
+      [id]
+    );
+
+    // Update all orders in all boxes from position_id 3 to 4 (shipping)
     const [updateResult] = await connection.query(
-      'UPDATE orders SET position_id = 4 WHERE box_id = ? AND position_id = 3',
-      [shipment.box_id]
+      `UPDATE orders o
+       INNER JOIN box b ON b.id = o.box_id
+       SET o.position_id = 4
+       WHERE b.shipment_id = ? AND o.position_id = 3 AND o.is_active = 1`,
+      [id]
     );
 
     await connection.commit();
 
     successResponse(res, {
-      shipment_id: id,
-      box_id: shipment.box_id,
+      shipment_id: parseInt(id),
+      boxes_count: boxesResult.length,
       orders_updated: updateResult.affectedRows
-    }, `تم إرسال الشحنة بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الشحن`);
+    }, `تم إرسال الشحنة بنجاح (${boxesResult.length} صندوق) وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الشحن`);
 
   } catch (error) {
     await connection.rollback();
@@ -290,7 +358,7 @@ const deliverShipment = asyncHandler(async (req, res) => {
   try {
     // Check if shipment exists and is in shipping status
     const [shipmentResult] = await connection.query(
-      'SELECT id, box_id, status_id FROM shipments WHERE id = ?',
+      'SELECT id, status_id FROM shipments WHERE id = ?',
       [id]
     );
 
@@ -306,25 +374,40 @@ const deliverShipment = asyncHandler(async (req, res) => {
       return errorResponse(res, 'الشحنة ليست في حالة الشحن', 400);
     }
 
+    // Get all boxes linked to this shipment
+    const [boxesResult] = await connection.query(
+      'SELECT id FROM box WHERE shipment_id = ?',
+      [id]
+    );
+
     // Update shipment status to delivered (3)
     await connection.query(
       'UPDATE shipments SET status_id = 3 WHERE id = ?',
       [id]
     );
 
-    // Update all orders in the box to delivered status (position_id = 5)
+    // Update box status to "وصل الصندوق" (status_id = 3)
+    await connection.query(
+      'UPDATE box SET status_id = 3 WHERE shipment_id = ?',
+      [id]
+    );
+
+    // Update all orders in all boxes to delivered status (position_id = 5)
     const [updateResult] = await connection.query(
-      'UPDATE orders SET position_id = 5 WHERE box_id = ? AND position_id = 4',
-      [shipment.box_id]
+      `UPDATE orders o
+       INNER JOIN box b ON b.id = o.box_id
+       SET o.position_id = 5
+       WHERE b.shipment_id = ? AND o.position_id = 4 AND o.is_active = 1`,
+      [id]
     );
 
     await connection.commit();
 
     successResponse(res, {
-      shipmentId: parseInt(id),
-      boxId: shipment.box_id,
-      ordersUpdated: updateResult.affectedRows
-    }, `تم تأكيد وصول الشحنة بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الوصول`);
+      shipment_id: parseInt(id),
+      boxes_count: boxesResult.length,
+      orders_updated: updateResult.affectedRows
+    }, `تم تأكيد وصول الشحنة بنجاح (${boxesResult.length} صندوق) وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الوصول`);
 
   } catch (error) {
     await connection.rollback();
@@ -345,13 +428,15 @@ const getClosedBoxes = asyncHandler(async (req, res) => {
       b.id,
       b.number,
       b.orders_count,
+      b.status_id,
+      bs.name as status_name,
       COUNT(o.id) as actual_orders_count,
-      CASE WHEN s.id IS NOT NULL THEN 1 ELSE 0 END as has_shipment
+      CASE WHEN b.shipment_id IS NOT NULL THEN 1 ELSE 0 END as has_shipment
     FROM box b
-    LEFT JOIN orders o ON o.box_id = b.id
-    LEFT JOIN shipments s ON s.box_id = b.id
-    WHERE b.is_available = 0
-    GROUP BY b.id, b.number, b.orders_count, s.id
+    LEFT JOIN box_status bs ON bs.id = b.status_id
+    LEFT JOIN orders o ON o.box_id = b.id AND o.is_active = 1
+    WHERE b.is_available = 0 AND b.shipment_id IS NULL
+    GROUP BY b.id, b.number, b.orders_count, b.status_id, bs.name, b.shipment_id
     ORDER BY b.id DESC`
   );
 
@@ -383,22 +468,21 @@ const getDeliveredShipments = asyncHandler(async (req, res) => {
   const [shipments] = await db.query(
     `SELECT 
       s.id,
-      s.box_id,
       s.company_id,
       s.sender_name,
       s.weight,
       s.status_id,
-      b.number as box_number,
       sc.company_name,
       ss.name as status_name,
-      COUNT(o.id) as orders_count
+      COUNT(DISTINCT b.id) as boxes_count,
+      COUNT(DISTINCT o.id) as orders_count
     FROM shipments s
-    LEFT JOIN box b ON b.id = s.box_id
     LEFT JOIN shipping_companies sc ON sc.id = s.company_id
     LEFT JOIN shipment_status ss ON ss.id = s.status_id
-    LEFT JOIN orders o ON o.box_id = s.box_id AND o.position_id = 5
+    LEFT JOIN box b ON b.shipment_id = s.id
+    LEFT JOIN orders o ON o.box_id = b.id AND o.position_id = 5 AND o.is_active = 1
     WHERE s.status_id = 3
-    GROUP BY s.id, s.box_id, s.company_id, s.sender_name, s.weight, s.status_id, b.number, sc.company_name, ss.name
+    GROUP BY s.id, s.company_id, s.sender_name, s.weight, s.status_id, sc.company_name, ss.name
     ORDER BY s.id DESC
     LIMIT ? OFFSET ?`,
     [parseInt(limit), offset]
@@ -428,7 +512,7 @@ const getDeliveredShipments = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Open box - Update all orders in box from position_id 5 to 6
+ * @desc    Open box - Update all orders in all boxes from position_id 5 to 6
  * @route   PUT /api/v1/shipments/:id/open-box
  * @access  Private (User only)
  */
@@ -441,7 +525,7 @@ const openBox = asyncHandler(async (req, res) => {
   try {
     // Check if shipment exists and is delivered
     const [shipmentResult] = await connection.query(
-      'SELECT id, box_id, status_id FROM shipments WHERE id = ?',
+      'SELECT id, status_id FROM shipments WHERE id = ?',
       [id]
     );
 
@@ -457,18 +541,28 @@ const openBox = asyncHandler(async (req, res) => {
       return errorResponse(res, 'الشحنة لم تصل بعد', 400);
     }
 
-    // Update all orders in the box from position_id 5 to 6
-    const [updateResult] = await connection.query(
-      'UPDATE orders SET position_id = 6 WHERE box_id = ? AND position_id = 5',
-      [shipment.box_id]
+    // Get all boxes linked to this shipment
+    const [boxesResult] = await connection.query(
+      'SELECT id FROM box WHERE shipment_id = ?',
+      [id]
     );
 
-    // Get all collections that have orders in this box
+    // Update all orders in all boxes from position_id 5 to 6
+    const [updateResult] = await connection.query(
+      `UPDATE orders o
+       INNER JOIN box b ON b.id = o.box_id
+       SET o.position_id = 6
+       WHERE b.shipment_id = ? AND o.position_id = 5 AND o.is_active = 1`,
+      [id]
+    );
+
+    // Get all collections that have orders in any of these boxes
     const [collectionsResult] = await connection.query(
       `SELECT DISTINCT o.collection_id 
        FROM orders o 
-       WHERE o.box_id = ? AND o.collection_id IS NOT NULL AND o.is_active = 1`,
-      [shipment.box_id]
+       INNER JOIN box b ON b.id = o.box_id
+       WHERE b.shipment_id = ? AND o.collection_id IS NOT NULL AND o.is_active = 1`,
+      [id]
     );
 
     let collectionsUpdated = 0;
@@ -512,11 +606,11 @@ const openBox = asyncHandler(async (req, res) => {
     await connection.commit();
 
     successResponse(res, {
-      shipmentId: parseInt(id),
-      boxId: shipment.box_id,
-      ordersUpdated: updateResult.affectedRows,
-      collectionsUpdated: collectionsUpdated
-    }, `تم فتح الصندوق بنجاح وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الفتح و ${collectionsUpdated} مجموعة`);
+      shipment_id: parseInt(id),
+      boxes_count: boxesResult.length,
+      orders_updated: updateResult.affectedRows,
+      collections_updated: collectionsUpdated
+    }, `تم فتح صناديق الشحنة بنجاح (${boxesResult.length} صندوق) وتم تحديث ${updateResult.affectedRows} طلب إلى حالة الفتح و ${collectionsUpdated} مجموعة`);
 
   } catch (error) {
     await connection.rollback();
@@ -527,7 +621,7 @@ const openBox = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get orders in delivered shipment box (position_id = 5)
+ * @desc    Get orders in delivered shipment boxes (position_id = 5)
  * @route   GET /api/v1/shipments/:id/box-orders
  * @access  Private (User only)
  */
@@ -538,16 +632,13 @@ const getBoxOrders = asyncHandler(async (req, res) => {
   const [shipmentResult] = await db.query(
     `SELECT 
       s.id,
-      s.box_id,
       s.company_id,
       s.sender_name,
       s.weight,
       s.status_id,
-      b.number as box_number,
       sc.company_name,
       ss.name as status_name
     FROM shipments s
-    LEFT JOIN box b ON b.id = s.box_id
     LEFT JOIN shipping_companies sc ON sc.id = s.company_id
     LEFT JOIN shipment_status ss ON ss.id = s.status_id
     WHERE s.id = ? AND s.status_id = 3`,
@@ -560,10 +651,26 @@ const getBoxOrders = asyncHandler(async (req, res) => {
 
   const shipment = shipmentResult[0];
 
-  // Get orders in the box with position_id = 5
+  // Get all boxes linked to this shipment
+  const [boxesResult] = await db.query(
+    `SELECT 
+      b.id,
+      b.number,
+      b.orders_count,
+      b.status_id,
+      bs.name as status_name
+    FROM box b
+    LEFT JOIN box_status bs ON bs.id = b.status_id
+    WHERE b.shipment_id = ?
+    ORDER BY b.id ASC`,
+    [id]
+  );
+
+  // Get orders in all boxes with position_id = 5
   const [ordersResult] = await db.query(
     `SELECT 
       o.id,
+      o.box_id,
       o.position_id,
       op.name as position_name,
       od.title,
@@ -587,17 +694,19 @@ const getBoxOrders = asyncHandler(async (req, res) => {
     INNER JOIN customers c ON c.id = o.customer_id
     INNER JOIN users u ON u.id = c.user_id
     LEFT JOIN brands b ON b.id = o.brand_id
-    WHERE o.box_id = ? AND o.position_id = 5 AND o.is_active = 1
-    ORDER BY o.created_at DESC`,
-    [shipment.box_id]
+    INNER JOIN box bx ON bx.id = o.box_id
+    WHERE bx.shipment_id = ? AND o.position_id = 5 AND o.is_active = 1
+    ORDER BY o.box_id ASC, o.created_at DESC`,
+    [id]
   );
 
   const shipmentData = {
     ...shipment,
+    boxes: boxesResult,
     orders: ordersResult
   };
 
-  successResponse(res, shipmentData, 'تم جلب طلبات الصندوق بنجاح');
+  successResponse(res, shipmentData, 'تم جلب طلبات صناديق الشحنة بنجاح');
 });
 
 module.exports = {
