@@ -62,7 +62,7 @@ const getAllCollections = asyncHandler(async (req, res) => {
       u.phone as customer_phone,
       COUNT(DISTINCT o.id) as total_orders,
       COUNT(DISTINCT CASE WHEN o.position_id >= 6 THEN o.id END) as received_orders,
-      COUNT(DISTINCT CASE WHEN o.position_id = 6 THEN o.id END) as ready_orders
+      COUNT(DISTINCT CASE WHEN o.position_id >= 6 THEN o.id END) as ready_orders
     FROM collections col
     INNER JOIN customers c ON c.id = col.customer_id
     INNER JOIN users u ON u.id = c.user_id
@@ -80,8 +80,8 @@ const getAllCollections = asyncHandler(async (req, res) => {
   const enhancedCollections = await Promise.all(collections.map(async col => {
     let calculatedStatus = 1;
     
-    if (col.ready_orders === col.total_orders && col.total_orders > 0) {
-      calculatedStatus = 3; // تجميع كلي
+    if (col.received_orders === col.total_orders && col.total_orders > 0) {
+      calculatedStatus = 3; // تجميع كلي (جميع الطلبات position_id >= 6)
     } else if (col.received_orders > 0) {
       calculatedStatus = 2; // تجميع جزئي
     }
@@ -196,11 +196,11 @@ const getCollectionById = asyncHandler(async (req, res) => {
   // Calculate dynamic status
   const totalOrders = ordersResult.length;
   const receivedOrders = ordersResult.filter(o => o.position_id >= 6).length;
-  const readyOrders = ordersResult.filter(o => o.position_id === 6).length;
+  const readyOrders = ordersResult.filter(o => o.position_id >= 6).length;
 
   let calculatedStatus = 1;
-  if (readyOrders === totalOrders && totalOrders > 0) {
-    calculatedStatus = 3; // تجميع كلي
+  if (receivedOrders === totalOrders && totalOrders > 0) {
+    calculatedStatus = 3; // تجميع كلي (جميع الطلبات position_id >= 6)
   } else if (receivedOrders > 0) {
     calculatedStatus = 2; // تجميع جزئي
   }
@@ -266,7 +266,7 @@ const sendOrderToDelivery = asyncHandler(async (req, res) => {
       SELECT 
         COUNT(*) as total_orders,
         COUNT(CASE WHEN position_id >= 6 THEN 1 END) as received_orders,
-        COUNT(CASE WHEN position_id = 6 THEN 1 END) as ready_orders
+        COUNT(CASE WHEN position_id >= 6 THEN 1 END) as ready_orders
       FROM orders 
       WHERE collection_id = ? AND is_active = 1
     `, [collectionId]);
@@ -274,8 +274,8 @@ const sendOrderToDelivery = asyncHandler(async (req, res) => {
     const { total_orders, received_orders, ready_orders } = statusCheck[0];
     let newCalculatedStatus = 1;
     
-    if (ready_orders === total_orders && total_orders > 0) {
-      newCalculatedStatus = 3; // تجميع كلي
+    if (received_orders === total_orders && total_orders > 0) {
+      newCalculatedStatus = 3; // تجميع كلي (جميع الطلبات position_id >= 6)
     } else if (received_orders > 0) {
       newCalculatedStatus = 2; // تجميع جزئي
     }
