@@ -40,6 +40,7 @@ const shipmentsRoutes = require('./routes/shipments.routes');
 const rolesRoutes = require('./routes/roles.routes');
 const purchaseInvoiceRoutes = require('./routes/purchaseInvoice.routes');
 const collectionsRoutes = require('./routes/collections.routes');
+const receivedOrdersRoutes = require('./routes/receivedOrders.routes');
 
 // Initialize Express app
 const app = express();
@@ -102,6 +103,7 @@ app.use('/api/v1/shipments', shipmentsRoutes);
 app.use('/api/v1/roles', rolesRoutes);
 app.use('/api/v1/purchase-invoices', purchaseInvoiceRoutes);
 app.use('/api/v1/collections', collectionsRoutes);
+app.use('/api/v1/received-orders', receivedOrdersRoutes);
 
 // 404 handler
 app.use(notFound);
