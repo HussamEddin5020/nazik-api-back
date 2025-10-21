@@ -162,7 +162,7 @@ const getCollectionById = asyncHandler(async (req, res) => {
       oi.quantity,
       oi.item_price,
       oi.total_amount,
-      oi.prepaid_value,
+      od.prepaid_value,
       b.name as brand_name,
       o.created_at,
       o.updated_at
