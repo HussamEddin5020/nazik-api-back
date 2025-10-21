@@ -219,6 +219,7 @@ const closeBox = asyncHandler(async (req, res) => {
  * @desc    Get available orders (position_id = 3) that can be added to boxes
  * @route   GET /api/v1/boxes/available-orders
  * @access  Private (User only)
+ * @note    Legacy API - kept for backward compatibility
  */
 const getAvailableOrders = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
@@ -277,6 +278,143 @@ const getAvailableOrders = asyncHandler(async (req, res) => {
       hasPrev: page > 1
     }
   }, 'تم جلب الطلبات المتاحة للصناديق بنجاح');
+});
+
+/**
+ * @desc    Get available carts (with orders that have position_id = 3)
+ * @route   GET /api/v1/boxes/available-carts
+ * @access  Private (User only)
+ */
+const getAvailableCarts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const offset = (page - 1) * limit;
+
+  // Get carts that have orders with position_id = 3 and is_active = 1
+  const [cartsResult] = await db.query(
+    `SELECT 
+      c.id,
+      c.orders_count,
+      c.is_available,
+      COUNT(o.id) as available_orders_count
+    FROM cart c
+    INNER JOIN orders o ON o.cart_id = c.id
+    WHERE o.position_id = 3 
+      AND o.is_active = 1 
+      AND (o.box_id IS NULL OR o.box_id = 0)
+    GROUP BY c.id, c.orders_count, c.is_available
+    ORDER BY c.id DESC
+    LIMIT ? OFFSET ?`,
+    [parseInt(limit), offset]
+  );
+
+  // Get total count
+  const [countResult] = await db.query(
+    `SELECT COUNT(DISTINCT c.id) as total 
+    FROM cart c
+    INNER JOIN orders o ON o.cart_id = c.id
+    WHERE o.position_id = 3 
+      AND o.is_active = 1 
+      AND (o.box_id IS NULL OR o.box_id = 0)`
+  );
+
+  const total = countResult[0].total;
+  const totalPages = Math.ceil(total / limit);
+
+  successResponse(res, {
+    carts: cartsResult,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    }
+  }, 'تم جلب السلات المتاحة بنجاح');
+});
+
+/**
+ * @desc    Get available orders from a specific cart
+ * @route   GET /api/v1/boxes/available-carts/:cartId/orders
+ * @access  Private (User only)
+ */
+const getAvailableOrdersByCart = asyncHandler(async (req, res) => {
+  const { cartId } = req.params;
+  const { page = 1, limit = 20 } = req.query;
+  const offset = (page - 1) * limit;
+
+  // Check if cart exists
+  const [cartCheck] = await db.query(
+    'SELECT id FROM cart WHERE id = ?',
+    [cartId]
+  );
+
+  if (cartCheck.length === 0) {
+    return errorResponse(res, 'السلة غير موجودة', 404);
+  }
+
+  // Get orders from this cart with position_id = 3 and is_active = 1
+  const [ordersResult] = await db.query(
+    `SELECT 
+      o.id,
+      o.position_id,
+      op.name as position_name,
+      od.title,
+      od.description,
+      od.image_url,
+      od.color,
+      od.size,
+      oi.quantity,
+      oi.item_price,
+      oi.total_amount,
+      u.name as customer_name,
+      u.email as customer_email,
+      u.phone as customer_phone,
+      b.name as brand_name,
+      o.created_at,
+      o.updated_at
+    FROM orders o
+    INNER JOIN order_position op ON op.id = o.position_id
+    LEFT JOIN order_details od ON od.order_id = o.id
+    LEFT JOIN order_invoices oi ON oi.id = o.order_invoice_id
+    INNER JOIN customers c ON c.id = o.customer_id
+    INNER JOIN users u ON u.id = c.user_id
+    LEFT JOIN brands b ON b.id = o.brand_id
+    WHERE o.cart_id = ? 
+      AND o.position_id = 3 
+      AND o.is_active = 1 
+      AND (o.box_id IS NULL OR o.box_id = 0)
+    ORDER BY o.created_at DESC
+    LIMIT ? OFFSET ?`,
+    [cartId, parseInt(limit), offset]
+  );
+
+  // Get total count
+  const [countResult] = await db.query(
+    `SELECT COUNT(*) as total 
+    FROM orders o 
+    WHERE o.cart_id = ? 
+      AND o.position_id = 3 
+      AND o.is_active = 1 
+      AND (o.box_id IS NULL OR o.box_id = 0)`,
+    [cartId]
+  );
+
+  const total = countResult[0].total;
+  const totalPages = Math.ceil(total / limit);
+
+  successResponse(res, {
+    cart_id: parseInt(cartId),
+    orders: ordersResult,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    }
+  }, 'تم جلب طلبات السلة بنجاح');
 });
 
 /**
@@ -417,6 +555,8 @@ module.exports = {
   createBox,
   closeBox,
   getAvailableOrders,
+  getAvailableCarts,
+  getAvailableOrdersByCart,
   addOrderToBox,
   removeOrderFromBox,
 };

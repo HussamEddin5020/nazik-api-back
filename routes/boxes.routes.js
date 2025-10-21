@@ -6,6 +6,8 @@ const {
   createBox,
   closeBox,
   getAvailableOrders,
+  getAvailableCarts,
+  getAvailableOrdersByCart,
   addOrderToBox,
   removeOrderFromBox,
 } = require('../controllers/boxes.controller');
@@ -28,7 +30,9 @@ router.use(checkUserType);
 
 // Routes - ترتيب مهم! الـ specific routes قبل الـ parameterized routes
 router.get('/', getAllBoxes);
-router.get('/available-orders', getAvailableOrders);
+router.get('/available-orders', getAvailableOrders); // Legacy - kept for backward compatibility
+router.get('/available-carts', getAvailableCarts); // NEW: Get carts with available orders
+router.get('/available-carts/:cartId/orders', getAvailableOrdersByCart); // NEW: Get orders from specific cart
 router.post('/', createBox);
 router.get('/:id', getBoxById);
 router.put('/:id/close', closeBox);
