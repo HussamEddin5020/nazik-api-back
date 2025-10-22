@@ -6,11 +6,15 @@ const db = require('../config/database');
 const getStatusName = (status) => {
   switch (status) {
     case 1:
-      return 'قيد الإجراء';
+      return 'تحت الإجراء';
     case 2:
       return 'استلام جزئي';
     case 3:
       return 'استلام كلي';
+    case 4:
+      return 'قيد التوصيل';
+    case 5:
+      return 'تم التوصيل';
     default:
       return 'غير محدد';
   }
@@ -61,8 +65,10 @@ const getAllCollections = asyncHandler(async (req, res) => {
       u.email as customer_email,
       u.phone as customer_phone,
       COUNT(DISTINCT o.id) as total_orders,
-      COUNT(DISTINCT CASE WHEN o.position_id >= 6 THEN o.id END) as received_orders,
-      COUNT(DISTINCT CASE WHEN o.position_id >= 6 THEN o.id END) as ready_orders
+      COUNT(DISTINCT CASE WHEN o.position_id = 6 THEN o.id END) as orders_at_6,
+      COUNT(DISTINCT CASE WHEN o.position_id = 7 THEN o.id END) as orders_at_7,
+      COUNT(DISTINCT CASE WHEN o.position_id = 8 THEN o.id END) as orders_at_8,
+      COUNT(DISTINCT CASE WHEN o.position_id >= 6 THEN o.id END) as orders_gte_6
     FROM collections col
     INNER JOIN customers c ON c.id = col.customer_id
     INNER JOIN users u ON u.id = c.user_id
@@ -78,16 +84,22 @@ const getAllCollections = asyncHandler(async (req, res) => {
 
   // Calculate dynamic status for each collection and update database
   const enhancedCollections = await Promise.all(collections.map(async col => {
-    let calculatedStatus = 1;
+    let calculatedStatus = 1; // تحت الإجراء (default)
     
-    if (col.received_orders === col.total_orders && col.total_orders > 0) {
-      calculatedStatus = 3; // تجميع كلي (جميع الطلبات position_id >= 6)
-    } else if (col.received_orders > 0) {
-      calculatedStatus = 2; // تجميع جزئي
+    if (col.total_orders > 0) {
+      if (col.orders_at_8 === col.total_orders) {
+        calculatedStatus = 5; // تم التوصيل (all orders at position 8)
+      } else if (col.orders_at_7 === col.total_orders) {
+        calculatedStatus = 4; // قيد التوصيل (all orders at position 7)
+      } else if (col.orders_at_6 === col.total_orders) {
+        calculatedStatus = 3; // استلام كلي (all orders at position 6)
+      } else if (col.orders_gte_6 > 0) {
+        calculatedStatus = 2; // استلام جزئي (some orders >= 6)
+      }
     }
     
     // Update collection status in database if different
-    if (col.status !== calculatedStatus) {
+    if (col.db_status !== calculatedStatus) {
       await updateCollectionStatus(col.id, calculatedStatus);
     }
     
@@ -195,18 +207,26 @@ const getCollectionById = asyncHandler(async (req, res) => {
 
   // Calculate dynamic status
   const totalOrders = ordersResult.length;
-  const receivedOrders = ordersResult.filter(o => o.position_id >= 6).length;
-  const readyOrders = ordersResult.filter(o => o.position_id >= 6).length;
+  const ordersAt6 = ordersResult.filter(o => o.position_id === 6).length;
+  const ordersAt7 = ordersResult.filter(o => o.position_id === 7).length;
+  const ordersAt8 = ordersResult.filter(o => o.position_id === 8).length;
+  const ordersGte6 = ordersResult.filter(o => o.position_id >= 6).length;
 
-  let calculatedStatus = 1;
-  if (receivedOrders === totalOrders && totalOrders > 0) {
-    calculatedStatus = 3; // تجميع كلي (جميع الطلبات position_id >= 6)
-  } else if (receivedOrders > 0) {
-    calculatedStatus = 2; // تجميع جزئي
+  let calculatedStatus = 1; // تحت الإجراء (default)
+  if (totalOrders > 0) {
+    if (ordersAt8 === totalOrders) {
+      calculatedStatus = 5; // تم التوصيل (all orders at position 8)
+    } else if (ordersAt7 === totalOrders) {
+      calculatedStatus = 4; // قيد التوصيل (all orders at position 7)
+    } else if (ordersAt6 === totalOrders) {
+      calculatedStatus = 3; // استلام كلي (all orders at position 6)
+    } else if (ordersGte6 > 0) {
+      calculatedStatus = 2; // استلام جزئي (some orders >= 6)
+    }
   }
 
   // Update collection status in database if different
-  if (collection.status !== calculatedStatus) {
+  if (collection.db_status !== calculatedStatus) {
     await updateCollectionStatus(collection.id, calculatedStatus);
   }
 
@@ -265,19 +285,27 @@ const sendOrderToDelivery = asyncHandler(async (req, res) => {
     const [statusCheck] = await connection.query(`
       SELECT 
         COUNT(*) as total_orders,
-        COUNT(CASE WHEN position_id >= 6 THEN 1 END) as received_orders,
-        COUNT(CASE WHEN position_id >= 6 THEN 1 END) as ready_orders
+        COUNT(CASE WHEN position_id = 6 THEN 1 END) as orders_at_6,
+        COUNT(CASE WHEN position_id = 7 THEN 1 END) as orders_at_7,
+        COUNT(CASE WHEN position_id = 8 THEN 1 END) as orders_at_8,
+        COUNT(CASE WHEN position_id >= 6 THEN 1 END) as orders_gte_6
       FROM orders 
       WHERE collection_id = ? AND is_active = 1
     `, [collectionId]);
 
-    const { total_orders, received_orders, ready_orders } = statusCheck[0];
-    let newCalculatedStatus = 1;
+    const { total_orders, orders_at_6, orders_at_7, orders_at_8, orders_gte_6 } = statusCheck[0];
+    let newCalculatedStatus = 1; // تحت الإجراء (default)
     
-    if (received_orders === total_orders && total_orders > 0) {
-      newCalculatedStatus = 3; // تجميع كلي (جميع الطلبات position_id >= 6)
-    } else if (received_orders > 0) {
-      newCalculatedStatus = 2; // تجميع جزئي
+    if (total_orders > 0) {
+      if (orders_at_8 === total_orders) {
+        newCalculatedStatus = 5; // تم التوصيل (all orders at position 8)
+      } else if (orders_at_7 === total_orders) {
+        newCalculatedStatus = 4; // قيد التوصيل (all orders at position 7)
+      } else if (orders_at_6 === total_orders) {
+        newCalculatedStatus = 3; // استلام كلي (all orders at position 6)
+      } else if (orders_gte_6 > 0) {
+        newCalculatedStatus = 2; // استلام جزئي (some orders >= 6)
+      }
     }
 
     // Update collection status in database
@@ -352,9 +380,9 @@ const sendAllCollectionOrders = asyncHandler(async (req, res) => {
       [id]
     );
 
-    // Update collection status to fully completed (status = 3)
+    // Update collection status to in delivery (status = 4)
     await connection.query(
-      'UPDATE collections SET status = 3 WHERE id = ?',
+      'UPDATE collections SET status = 4 WHERE id = ?',
       [id]
     );
 
