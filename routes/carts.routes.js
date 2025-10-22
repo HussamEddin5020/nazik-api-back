@@ -5,27 +5,16 @@ const {
   getCartById,
   createCart,
 } = require('../controllers/carts.controller');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
 
-// Middleware للتحقق من أن المستخدم هو user وليس customer
-const checkUserType = (req, res, next) => {
-  if (req.user.type !== 'user') {
-    return res.status(403).json({
-      success: false,
-      message: 'غير مصرح لك بالوصول إلى هذا المورد',
-    });
-  }
-  next();
-};
-
-// Apply authentication and user type check to all routes
+// Apply authentication and staff check to all routes
 router.use(verifyToken);
-router.use(checkUserType);
+router.use(isStaff);
 
 // Routes
-router.get('/', getAllCarts);
-router.get('/:id', getCartById);
-router.post('/', createCart);
+router.get('/', hasPermission('view_carts'), getAllCarts);
+router.get('/:id', hasPermission('view_carts'), getCartById);
+router.post('/', hasPermission('create_carts'), createCart);
 // تم إلغاء route إغلاق السلة يدوياً - السلة تُغلق تلقائياً
 
 module.exports = router;

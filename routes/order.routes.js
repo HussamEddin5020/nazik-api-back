@@ -24,44 +24,44 @@ router.get('/my-orders', orderController.getMyOrders);
 /**
  * @route   GET /api/v1/orders/:id
  * @desc    Get order by ID
- * @access  Private
+ * @access  Private (view_orders permission for staff, own orders for customers)
  */
-router.get('/:id', orderController.getOrderById);
+router.get('/:id', checkPermissionNew('view_orders'), orderController.getOrderById);
 
 /**
  * @route   POST /api/v1/orders
  * @desc    Create new order
- * @access  Private
+ * @access  Private (create_orders permission)
  */
-router.post('/', orderController.createOrder);
+router.post('/', checkPermissionNew('create_orders'), orderController.createOrder);
 
 /**
  * @route   PUT /api/v1/orders/:id
  * @desc    Update order
- * @access  Private (Staff with update permission)
+ * @access  Private (update_orders permission)
  */
-router.put('/:id', orderController.updateOrder);
+router.put('/:id', checkPermissionNew('update_orders'), orderController.updateOrder);
 
 /**
  * @route   PUT /api/v1/orders/:id/position
  * @desc    Update order position/status
- * @access  Private (Staff)
+ * @access  Private (update_order_status permission)
  */
-router.put('/:id/position', isStaff, orderController.updateOrderPosition);
+router.put('/:id/position', isStaff, checkPermissionNew('update_order_status'), orderController.updateOrderPosition);
 
 /**
  * @route   DELETE /api/v1/orders/:id
  * @desc    Delete order
- * @access  Private (Staff with delete permission)
+ * @access  Private (delete_orders permission)
  */
 router.delete('/:id', isStaff, checkPermissionNew('delete_orders'), orderController.deleteOrder);
 
 /**
  * @route   GET /api/v1/orders/:id/history
  * @desc    Get order status history
- * @access  Private
+ * @access  Private (view_orders permission)
  */
-router.get('/:id/history', orderController.getOrderHistory);
+router.get('/:id/history', checkPermissionNew('view_orders'), orderController.getOrderHistory);
 
 module.exports = router;
 

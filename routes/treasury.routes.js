@@ -6,28 +6,17 @@ const {
   addMoneyToTreasury,
   getTreasuryHistory,
 } = require('../controllers/treasury.controller');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
 
-// Middleware للتحقق من أن المستخدم هو user وليس customer
-const checkUserType = (req, res, next) => {
-  if (req.user.type !== 'user') {
-    return res.status(403).json({
-      success: false,
-      message: 'غير مصرح لك بالوصول إلى هذا المورد',
-    });
-  }
-  next();
-};
-
-// Apply authentication and user type check to all routes
+// Apply authentication and staff check to all routes
 router.use(verifyToken);
-router.use(checkUserType);
+router.use(isStaff);
 
 // Routes
-router.get('/balance', getTreasuryBalance);
-router.put('/balance', updateTreasuryBalance);
-router.post('/add', addMoneyToTreasury);
-router.get('/history', getTreasuryHistory);
+router.get('/balance', hasPermission('view_finance'), getTreasuryBalance);
+router.put('/balance', hasPermission('manage_finance'), updateTreasuryBalance);
+router.post('/add', hasPermission('manage_finance'), addMoneyToTreasury);
+router.get('/history', hasPermission('view_finance'), getTreasuryHistory);
 
 module.exports = router;
 

@@ -6,28 +6,17 @@ const {
   sendOrderToDelivery,
   sendAllCollectionOrders,
 } = require('../controllers/collections.controller');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
 
-// Middleware للتحقق من أن المستخدم هو user وليس customer
-const checkUserType = (req, res, next) => {
-  if (req.user.type !== 'user') {
-    return res.status(403).json({
-      success: false,
-      message: 'غير مصرح لك بالوصول إلى هذا المورد',
-    });
-  }
-  next();
-};
-
-// Apply authentication and user type check to all routes
+// Apply authentication and staff check to all routes
 router.use(verifyToken);
-router.use(checkUserType);
+router.use(isStaff);
 
 // Routes
-router.get('/', getAllCollections);
-router.get('/:id', getCollectionById);
-router.put('/:id/send-all', sendAllCollectionOrders);
-router.put('/:collectionId/orders/:orderId/send', sendOrderToDelivery);
+router.get('/', hasPermission('view_collections'), getAllCollections);
+router.get('/:id', hasPermission('view_collections'), getCollectionById);
+router.put('/:id/send-all', hasPermission('send_orders_delivery'), sendAllCollectionOrders);
+router.put('/:collectionId/orders/:orderId/send', hasPermission('send_orders_delivery'), sendOrderToDelivery);
 
 module.exports = router;
 

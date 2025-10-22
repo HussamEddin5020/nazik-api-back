@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customer.controller');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
 
 // All routes require authentication
 router.use(verifyToken);
@@ -9,9 +9,9 @@ router.use(verifyToken);
 /**
  * @route   GET /api/v1/customers
  * @desc    Get all customers
- * @access  Private (Staff)
+ * @access  Private (Staff with view_orders permission)
  */
-router.get('/', customerController.getAllCustomers);
+router.get('/', isStaff, hasPermission('view_orders'), customerController.getAllCustomers);
 
 /**
  * @route   GET /api/v1/customers/:id
