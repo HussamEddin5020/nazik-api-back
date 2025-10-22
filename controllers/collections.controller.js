@@ -234,8 +234,10 @@ const getCollectionById = asyncHandler(async (req, res) => {
     ...collection,
     orders: ordersResult,
     total_orders: totalOrders,
-    received_orders: receivedOrders,
-    ready_orders: readyOrders,
+    orders_at_6: ordersAt6,
+    orders_at_7: ordersAt7,
+    orders_at_8: ordersAt8,
+    orders_gte_6: ordersGte6,
     calculated_status: calculatedStatus,
     status_name: getStatusName(calculatedStatus)
   };
