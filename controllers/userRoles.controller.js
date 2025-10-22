@@ -110,7 +110,7 @@ exports.getUserRoles = asyncHandler(async (req, res) => {
   
   // Check if user exists and is staff
   const [users] = await db.query(
-    'SELECT id, name, email, phone, type, status FROM users WHERE id = ? AND type = "user"',
+    'SELECT id, name, email, phone, type, status FROM users WHERE id = ? AND type = \'user\'',
     [id]
   );
   
@@ -178,7 +178,7 @@ exports.assignUserRoles = asyncHandler(async (req, res) => {
   
   // Check if user exists and is staff
   const [users] = await db.query(
-    'SELECT id, name, type FROM users WHERE id = ? AND type = "user"',
+    'SELECT id, name, type FROM users WHERE id = ? AND type = \'user\'',
     [id]
   );
   
@@ -309,7 +309,7 @@ exports.updateUserStatus = asyncHandler(async (req, res) => {
   
   // Check if user exists
   const [users] = await db.query(
-    'SELECT id, name, status FROM users WHERE id = ? AND type = "user"',
+    'SELECT id, name, status FROM users WHERE id = ? AND type = \'user\'',
     [id]
   );
   
