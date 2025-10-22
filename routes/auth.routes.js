@@ -3,6 +3,7 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller');
 const { body } = require('express-validator');
 const validate = require('../middleware/validator');
+const { verifyToken, isStaff } = require('../middleware/auth');
 
 // Validation rules
 const registerValidation = [
@@ -55,7 +56,14 @@ router.post('/refresh-token', authController.refreshToken);
  * @desc    Get current user info
  * @access  Private
  */
-router.get('/me', authController.getCurrentUser);
+router.get('/me', verifyToken, authController.getCurrentUser);
+
+/**
+ * @route   GET /api/v1/auth/permissions
+ * @desc    Get current user permissions
+ * @access  Private (Staff only)
+ */
+router.get('/permissions', verifyToken, isStaff, authController.getUserPermissions);
 
 module.exports = router;
 

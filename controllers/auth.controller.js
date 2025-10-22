@@ -308,6 +308,52 @@ exports.getCurrentUser = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Get current user permissions
+ * @route   GET /api/v1/auth/permissions
+ * @access  Private (Staff only)
+ */
+exports.getUserPermissions = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  // Check if user is staff
+  if (req.user.type !== 'user') {
+    return successResponse(res, {
+      permissions: []
+    }, 'العملاء ليس لديهم صلاحيات نظام');
+  }
+
+  // Get user permissions from v_user_permissions view
+  const [permissions] = await db.query(
+    `SELECT DISTINCT 
+       p.id,
+       p.name,
+       p.description,
+       p.module,
+       p.action
+     FROM user_roles ur
+     JOIN roles r ON ur.role_id = r.id
+     JOIN role_permissions rp ON r.id = rp.role_id
+     JOIN new_permissions p ON rp.permission_id = p.id
+     WHERE ur.user_id = ?
+       AND ur.is_active = 1
+       AND r.is_active = 1
+       AND rp.is_active = 1
+       AND p.is_active = 1
+       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+     ORDER BY p.module, p.name`,
+    [userId]
+  );
+
+  // Extract just the permission names for easy checking
+  const permissionNames = permissions.map(p => p.name);
+
+  successResponse(res, {
+    permissions: permissionNames,
+    permissionsDetails: permissions
+  }, 'تم جلب الصلاحيات بنجاح');
+});
+
 module.exports = exports;
 
 
