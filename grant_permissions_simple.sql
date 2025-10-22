@@ -21,3 +21,4 @@ LEFT JOIN role_permissions rp ON r.id = rp.role_id AND rp.is_active = TRUE
 WHERE u.id = 1001000039
 GROUP BY u.id, u.name, r.name;
 
+

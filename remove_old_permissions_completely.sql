@@ -92,3 +92,4 @@ COMMIT;
 
 SELECT 'تم إزالة النظام القديم بنجاح!' as final_message;
 
+

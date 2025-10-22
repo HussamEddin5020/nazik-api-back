@@ -57,7 +57,29 @@ const NEW_PERMISSIONS = {
 
   // إدارة الصلاحيات
   MANAGE_PERMISSIONS: 'manage_permissions',
-  VIEW_PERMISSIONS: 'view_permissions'
+  VIEW_PERMISSIONS: 'view_permissions',
+
+  // إدارة الأدوار
+  MANAGE_ROLES: 'manage_roles',
+  VIEW_ROLES: 'view_roles',
+  CREATE_ROLES: 'create_roles',
+  UPDATE_ROLES: 'update_roles',
+  DELETE_ROLES: 'delete_roles',
+
+  // إدارة المجموعات
+  VIEW_COLLECTIONS: 'view_collections',
+  MANAGE_COLLECTIONS: 'manage_collections',
+  CREATE_COLLECTIONS: 'create_collections',
+  UPDATE_COLLECTIONS: 'update_collections',
+  DELETE_COLLECTIONS: 'delete_collections',
+  SEND_ORDERS_DELIVERY: 'send_orders_delivery',
+
+  // الطلبات المستلمة
+  VIEW_RECEIVED_ORDERS: 'view_received_orders',
+
+  // فواتير الشراء
+  MANAGE_PURCHASE_INVOICES: 'manage_purchase_invoices',
+  CANCEL_ORDERS: 'cancel_orders'
 };
 
 const PERMISSION_MODULES = {
@@ -69,7 +91,9 @@ const PERMISSION_MODULES = {
   FINANCE: 'finance',
   REPORTS: 'reports',
   AUDIT: 'audit',
-  PERMISSIONS: 'permissions'
+  PERMISSIONS: 'permissions',
+  ROLES: 'roles',
+  COLLECTIONS: 'collections'
 };
 
 const PERMISSION_ACTIONS = {

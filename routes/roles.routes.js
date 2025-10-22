@@ -1,132 +1,67 @@
 const express = require('express');
 const router = express.Router();
 const {
-  // Roles
   getAllRoles,
   getRoleById,
   createRole,
   updateRole,
   deleteRole,
-  
-  // Permissions
-  getAllPermissions,
-  getPermissionModules,
-  
-  // User Roles
-  assignRoleToUser,
-  removeRoleFromUser,
-  getUserRoles,
-  getUserPermissions,
-  
-  // Permission Checking
-  checkUserPermission,
-  getUserEffectivePermissions
+  getRolePermissions,
+  updateRolePermissions
 } = require('../controllers/roles.controller');
+const { verifyToken, isStaff, hasPermission } = require('../middleware/auth');
 
-const { verifyToken } = require('../middleware/auth');
-const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
+// Apply authentication middleware to all routes
+router.use(verifyToken);
+router.use(isStaff);
 
-// =====================================================
-// Routes للأدوار (Roles)
-// =====================================================
+/**
+ * @route   GET /api/v1/roles
+ * @desc    Get all roles
+ * @access  Private (view_roles permission)
+ */
+router.get('/', hasPermission('view_roles'), getAllRoles);
 
-// Get all roles
-router.get('/', 
-  verifyToken, 
-  checkPermissionNew('view_permissions'),
-  getAllRoles
-);
+/**
+ * @route   GET /api/v1/roles/:id
+ * @desc    Get single role by ID
+ * @access  Private (view_roles permission)
+ */
+router.get('/:id', hasPermission('view_roles'), getRoleById);
 
-// Get role by ID
-router.get('/:id', 
-  verifyToken, 
-  checkPermissionNew('view_permissions'),
-  getRoleById
-);
+/**
+ * @route   POST /api/v1/roles
+ * @desc    Create new role
+ * @access  Private (create_roles permission)
+ */
+router.post('/', hasPermission('create_roles'), createRole);
 
-// Create new role
-router.post('/', 
-  verifyToken, 
-  checkPermissionNew('manage_permissions'),
-  createRole
-);
+/**
+ * @route   PUT /api/v1/roles/:id
+ * @desc    Update role
+ * @access  Private (update_roles permission)
+ */
+router.put('/:id', hasPermission('update_roles'), updateRole);
 
-// Update role
-router.put('/:id', 
-  verifyToken, 
-  checkPermissionNew('manage_permissions'),
-  updateRole
-);
+/**
+ * @route   DELETE /api/v1/roles/:id
+ * @desc    Delete role
+ * @access  Private (delete_roles permission)
+ */
+router.delete('/:id', hasPermission('delete_roles'), deleteRole);
 
-// Delete role
-router.delete('/:id', 
-  verifyToken, 
-  checkPermissionNew('manage_permissions'),
-  deleteRole
-);
+/**
+ * @route   GET /api/v1/roles/:id/permissions
+ * @desc    Get permissions for a role
+ * @access  Private (view_roles permission)
+ */
+router.get('/:id/permissions', hasPermission('view_roles'), getRolePermissions);
 
-// =====================================================
-// Routes للصلاحيات (Permissions)
-// =====================================================
-
-// Get all permissions
-router.get('/permissions/all', 
-  verifyToken, 
-  checkPermissionNew('view_permissions'),
-  getAllPermissions
-);
-
-// Get permission modules
-router.get('/permissions/modules', 
-  verifyToken, 
-  checkPermissionNew('view_permissions'),
-  getPermissionModules
-);
-
-// =====================================================
-// Routes لأدوار المستخدمين (User Roles)
-// =====================================================
-
-// Assign role to user
-router.post('/users/:userId/assign', 
-  verifyToken, 
-  checkPermissionNew('manage_users'),
-  assignRoleToUser
-);
-
-// Remove role from user
-router.delete('/users/:userId/roles/:roleId', 
-  verifyToken, 
-  checkPermissionNew('manage_users'),
-  removeRoleFromUser
-);
-
-// Get user roles
-router.get('/users/:userId/roles', 
-  verifyToken, 
-  checkPermissionNew('view_users'),
-  getUserRoles
-);
-
-// Get user permissions
-router.get('/users/:userId/permissions', 
-  verifyToken, 
-  checkPermissionNew('view_users'),
-  getUserPermissions
-);
-
-// Check user permission
-router.get('/users/:userId/check-permission/:permissionName', 
-  verifyToken, 
-  checkPermissionNew('view_users'),
-  checkUserPermission
-);
-
-// Get user effective permissions
-router.get('/users/:userId/effective-permissions', 
-  verifyToken, 
-  checkPermissionNew('view_users'),
-  getUserEffectivePermissions
-);
+/**
+ * @route   PUT /api/v1/roles/:id/permissions
+ * @desc    Update role permissions
+ * @access  Private (manage_roles permission)
+ */
+router.put('/:id/permissions', hasPermission('manage_roles'), updateRolePermissions);
 
 module.exports = router;
