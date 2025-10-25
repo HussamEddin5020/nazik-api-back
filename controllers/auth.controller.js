@@ -315,15 +315,23 @@ exports.getCurrentUser = asyncHandler(async (req, res) => {
  */
 exports.getUserPermissions = asyncHandler(async (req, res) => {
   const userId = req.user.id;
+  
+  console.log('🔍 getUserPermissions - User ID:', userId);
+  console.log('🔍 getUserPermissions - User type:', req.user.type);
+  console.log('🔍 getUserPermissions - User name:', req.user.name);
 
   // Check if user is staff
   if (req.user.type !== 'user') {
+    console.log('❌ getUserPermissions - User is not staff, type:', req.user.type);
     return successResponse(res, {
       permissions: []
     }, 'العملاء ليس لديهم صلاحيات نظام');
   }
+  
+  console.log('✅ getUserPermissions - User is staff, proceeding...');
 
   // Get user permissions from v_user_permissions view
+  console.log('🔍 getUserPermissions - Executing SQL query...');
   const [permissions] = await db.query(
     `SELECT DISTINCT 
        p.id,
@@ -345,8 +353,15 @@ exports.getUserPermissions = asyncHandler(async (req, res) => {
     [userId]
   );
 
+  console.log('🔍 getUserPermissions - SQL query executed');
+  console.log('🔍 getUserPermissions - Raw permissions count:', permissions.length);
+  console.log('🔍 getUserPermissions - Raw permissions:', permissions);
+
   // Extract just the permission names for easy checking
   const permissionNames = permissions.map(p => p.name);
+  
+  console.log('🔍 getUserPermissions - Permission names:', permissionNames);
+  console.log('🔍 getUserPermissions - Permission names count:', permissionNames.length);
 
   successResponse(res, {
     permissions: permissionNames,

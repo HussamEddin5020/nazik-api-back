@@ -153,3 +153,7 @@ SELECT '✅ تم إصلاح Triggers جدول purchase_invoices بنجاح' AS s
 
 
 
+
+
+
+

@@ -74,3 +74,7 @@ router.delete('/:id', hasPermission('manage_permissions'), deletePermission);
 
 module.exports = router;
 
+
+
+
+

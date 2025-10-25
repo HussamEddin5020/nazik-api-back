@@ -22,3 +22,7 @@ WHERE u.id = 1001000039
 GROUP BY u.id, u.name, r.name;
 
 
+
+
+
+

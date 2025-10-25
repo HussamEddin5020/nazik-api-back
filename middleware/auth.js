@@ -22,17 +22,23 @@ const verifyToken = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     // Verify token
+    console.log('🔍 verifyToken - Verifying JWT token...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('🔍 verifyToken - Token decoded:', decoded);
     
     // Get user from database
+    console.log('🔍 verifyToken - Querying user from database, ID:', decoded.userId);
     const [users] = await db.query(
       `SELECT id, name, email, phone, type, status 
        FROM users 
        WHERE id = ? AND status = 'active'`,
       [decoded.userId]
     );
+    
+    console.log('🔍 verifyToken - Database query result:', users);
 
     if (users.length === 0) {
+      console.log('❌ verifyToken - User not found or inactive');
       return res.status(401).json({
         success: false,
         message: 'المستخدم غير موجود أو معطل'
@@ -71,6 +77,7 @@ const verifyToken = async (req, res, next) => {
     await db.query('SET @current_user_id = ?', [req.user.id]);
     await db.query('SET @current_user_type = ?', [req.user.type]);
     
+    console.log('✅ verifyToken - User authenticated:', req.user);
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -93,12 +100,19 @@ const verifyToken = async (req, res, next) => {
 
 // Check if user is staff (type = 'user')
 const isStaff = (req, res, next) => {
+  console.log('🔍 isStaff middleware - User ID:', req.user?.id);
+  console.log('🔍 isStaff middleware - User type:', req.user?.type);
+  console.log('🔍 isStaff middleware - User name:', req.user?.name);
+  
   if (req.user.type !== 'user') {
+    console.log('❌ isStaff middleware - User is not staff, type:', req.user.type);
     return res.status(403).json({
       success: false,
       message: 'غير مصرح لك بالوصول لهذا المورد. مخصص للموظفين فقط'
     });
   }
+  
+  console.log('✅ isStaff middleware - User is staff, proceeding...');
   next();
 };
 
