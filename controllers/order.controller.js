@@ -428,6 +428,120 @@ exports.getOrderHistory = asyncHandler(async (req, res) => {
   successResponse(res, history);
 });
 
+/**
+ * @desc    Get cancelled orders (is_active = 0)
+ * @route   GET /api/v1/orders/cancelled
+ * @access  Private (Staff with view_orders permission)
+ */
+exports.getCancelledOrders = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, search } = req.query;
+  const { limit: pageLimit, offset } = getPagination(page, limit);
+
+  let query = `
+    SELECT o.id, o.customer_id, o.position_id, o.created_at, o.updated_at,
+           o.cart_id, o.box_id, o.barcode, o.is_active,
+           op.name as position_name,
+           u.name as customer_name, u.email as customer_email, u.phone as customer_phone,
+           od.title, od.color, od.size, od.product_link, od.image_url,
+           oi.item_price, oi.quantity, oi.total_amount, oi.purchase_method,
+           b.name as brand_name
+    FROM orders o
+    LEFT JOIN order_position op ON o.position_id = op.id
+    LEFT JOIN customers c ON o.customer_id = c.id
+    LEFT JOIN users u ON c.user_id = u.id
+    LEFT JOIN order_details od ON o.id = od.order_id
+    LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
+    LEFT JOIN brands b ON o.brand_id = b.id
+    WHERE o.is_active = 0
+  `;
+
+  const params = [];
+
+  if (search) {
+    query += ` AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR od.title LIKE ?)`;
+    const searchTerm = `%${search}%`;
+    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+  }
+
+  // Get total count
+  const countQuery = query.replace(/SELECT.*FROM/, 'SELECT COUNT(DISTINCT o.id) as total FROM');
+  const [countResult] = await db.query(countQuery, params);
+  const total = countResult[0].total;
+
+  // Add pagination and ordering
+  query += ' ORDER BY o.updated_at DESC LIMIT ? OFFSET ?';
+  params.push(pageLimit, offset);
+
+  const [orders] = await db.query(query, params);
+
+  successResponse(res, buildPaginationResponse(orders, page, limit, total));
+});
+
+/**
+ * @desc    Update order return status
+ * @route   PUT /api/v1/orders/:id/return-status
+ * @access  Private (Staff with manage_orders permission)
+ */
+exports.updateReturnStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { notes } = req.body;
+
+  // Get current order
+  const [orders] = await db.query(
+    'SELECT position_id FROM orders WHERE id = ? AND is_active = 0',
+    [id]
+  );
+
+  if (orders.length === 0) {
+    return errorResponse(res, 'الطلب غير موجود أو غير ملغي', 404);
+  }
+
+  const currentPosition = orders[0].position_id;
+  let nextPosition;
+
+  // Determine next position based on current position
+  if (currentPosition === 3) {
+    // في تركيا - المرحلة الأولى
+    nextPosition = 11; // عادت لمخزن تركيا
+  } else if (currentPosition === 11) {
+    // المرحلة الثانية
+    nextPosition = 12; // تم الإرجاع الكامل
+  } else if ([4, 5, 6, 7, 8].includes(currentPosition)) {
+    // في ليبيا - المرحلة الأولى
+    nextPosition = 9; // عاد الطلب للشركة
+  } else if (currentPosition === 9) {
+    // المرحلة الثانية
+    nextPosition = 10; // قيد الشحن لتركيا
+  } else if (currentPosition === 10) {
+    // المرحلة الثالثة
+    nextPosition = 11; // عادت لمخزن تركيا
+  } else if (currentPosition === 11 && ![4, 5, 6, 7, 8].includes(currentPosition)) {
+    // المرحلة الرابعة
+    nextPosition = 12; // تم الإرجاع الكامل
+  } else if (currentPosition === 12) {
+    return errorResponse(res, 'تم إرجاع الطلب كلياً بالفعل', 400);
+  } else {
+    return errorResponse(res, 'حالة الطلب الحالية لا تدعم عملية الإرجاع', 400);
+  }
+
+  // Update order position
+  await db.query(
+    'UPDATE orders SET position_id = ? WHERE id = ?',
+    [nextPosition, id]
+  );
+
+  // Get updated order
+  const [updatedOrders] = await db.query(
+    `SELECT o.*, op.name as position_name
+     FROM orders o
+     LEFT JOIN order_position op ON o.position_id = op.id
+     WHERE o.id = ?`,
+    [id]
+  );
+
+  successResponse(res, updatedOrders[0], 'تم تحديث حالة الإرجاع بنجاح');
+});
+
 module.exports = exports;
 
 

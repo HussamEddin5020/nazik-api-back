@@ -22,6 +22,20 @@ router.get('/', checkPermissionNew('view_orders'), orderController.getAllOrders)
 router.get('/my-orders', orderController.getMyOrders);
 
 /**
+ * @route   GET /api/v1/orders/cancelled
+ * @desc    Get cancelled orders (is_active = 0)
+ * @access  Private (Staff with view_orders permission)
+ */
+router.get('/cancelled', checkPermissionNew('view_orders'), orderController.getCancelledOrders);
+
+/**
+ * @route   PUT /api/v1/orders/:id/return-status
+ * @desc    Update order return status
+ * @access  Private (Staff with manage_orders permission)
+ */
+router.put('/:id/return-status', checkPermissionNew('manage_orders'), orderController.updateReturnStatus);
+
+/**
  * @route   GET /api/v1/orders/:id
  * @desc    Get order by ID
  * @access  Private (view_orders permission for staff, own orders for customers)
