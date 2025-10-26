@@ -26,14 +26,21 @@ exports.getFinancialSummary = asyncHandler(async (req, res) => {
     WHERE payment_method = 'card' AND card_paid_amount IS NOT NULL
   `);
 
-  // 3. العربونات للطلبات تحت الشراء (position_id = 2)
+  // 3. العربونات من collections
+  // إذا status = 5 (تم التوصيل): اجلب total
+  // إذا status >= 2 و <= 4: اجلب prepaid_value
   const [advanceDeposits] = await db.query(`
     SELECT 
-      COUNT(o.id) as total_advance_orders,
-      COALESCE(SUM(oi.cash_amount + oi.card_paid_amount), 0) as total_advance_amount
-    FROM orders o
-    INNER JOIN order_invoices oi ON o.id = oi.order_id
-    WHERE o.position_id = 2 AND o.is_active = 1
+      COUNT(*) as total_advance_orders,
+      COALESCE(SUM(
+        CASE 
+          WHEN status = 5 THEN total
+          WHEN status >= 2 AND status <= 4 THEN prepaid_value
+          ELSE 0
+        END
+      ), 0) as total_advance_amount
+    FROM collections
+    WHERE status IN (2, 3, 4, 5)
   `);
 
   // 4. إجمالي الإيرادات (النقد + البطاقة)
