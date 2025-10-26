@@ -36,6 +36,13 @@ router.get('/cancelled', checkPermissionNew('view_orders'), orderController.getC
 router.put('/:id/return-status', checkPermissionNew('manage_orders'), orderController.updateReturnStatus);
 
 /**
+ * @route   GET /api/v1/orders/:id/history
+ * @desc    Get order status history
+ * @access  Private (view_orders permission)
+ */
+router.get('/:id/history', checkPermissionNew('view_orders'), orderController.getOrderHistory);
+
+/**
  * @route   GET /api/v1/orders/:id
  * @desc    Get order by ID
  * @access  Private (view_orders permission for staff, own orders for customers)
@@ -69,13 +76,6 @@ router.put('/:id/position', isStaff, checkPermissionNew('update_order_status'), 
  * @access  Private (delete_orders permission)
  */
 router.delete('/:id', isStaff, checkPermissionNew('delete_orders'), orderController.deleteOrder);
-
-/**
- * @route   GET /api/v1/orders/:id/history
- * @desc    Get order status history
- * @access  Private (view_orders permission)
- */
-router.get('/:id/history', checkPermissionNew('view_orders'), orderController.getOrderHistory);
 
 module.exports = router;
 
