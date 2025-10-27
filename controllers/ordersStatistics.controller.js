@@ -14,43 +14,35 @@ exports.getOrdersStatistics = asyncHandler(async (req, res) => {
   let query = `
     SELECT 
       o.id,
-      o.customer_id,
       o.position_id,
       o.is_active,
       o.created_at,
       o.updated_at,
-      o.cart_id,
-      o.box_id,
-      o.collection_id,
       o.barcode,
       op.name as position_name,
-      op.id as position_id_value,
-      cu.id as customer_id_value,
-      u.name as customer_name,
-      u.email as customer_email,
-      u.phone as customer_phone,
+      od.image_url,
       od.title,
       od.description,
       od.color,
       od.size,
-      od.image_url,
+      od.capacity,
       od.product_link,
       oi.item_price,
       oi.quantity,
       oi.total_amount,
       oi.purchase_method,
+      u.name as customer_name,
+      u.email as customer_email,
+      u.phone as customer_phone,
       b.name as brand_name,
-      c.is_available as cart_is_available,
-      col.status as collection_status
+      cu.id as customer_id
     FROM orders o
+    LEFT JOIN order_details od ON o.id = od.order_id
     LEFT JOIN order_position op ON o.position_id = op.id
     LEFT JOIN customers cu ON o.customer_id = cu.id
     LEFT JOIN users u ON cu.user_id = u.id
-    LEFT JOIN order_details od ON o.id = od.order_id
-    LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
     LEFT JOIN brands b ON o.brand_id = b.id
-    LEFT JOIN cart c ON o.cart_id = c.id
-    LEFT JOIN collections col ON o.collection_id = col.id
+    LEFT JOIN order_invoices oi ON o.order_invoice_id = oi.id
     WHERE 1=1
   `;
 
