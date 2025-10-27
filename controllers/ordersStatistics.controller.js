@@ -88,53 +88,42 @@ exports.getOrdersStatistics = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get order statistics summary
+ * @desc    Get order statistics summary with position distribution
  * @route   GET /api/v1/orders-statistics/summary
  * @access  Private
  */
 exports.getStatisticsSummary = asyncHandler(async (req, res) => {
-  const queries = {
-    totalActiveOrders: `
-      SELECT COUNT(*) as count 
-      FROM orders 
-      WHERE is_active = 1
-    `,
-    totalCancelledOrders: `
-      SELECT COUNT(*) as count 
-      FROM orders 
-      WHERE is_active = 0
-    `,
-    ordersByPosition: `
-      SELECT op.id, op.name, COUNT(o.id) as count
-      FROM order_position op
-      LEFT JOIN orders o ON o.position_id = op.id AND o.is_active = 1
-      GROUP BY op.id, op.name
-      ORDER BY op.id
-    `,
-    ordersByStatus: `
-      SELECT 
-        is_active,
-        COUNT(*) as count
-      FROM orders
-      GROUP BY is_active
-    `
-  };
+  const { is_active } = req.query;
+  
+  let whereClause = '';
+  const params = [];
+  
+  if (is_active !== undefined) {
+    whereClause = 'WHERE o.is_active = ?';
+    params.push(is_active);
+  }
 
-  const results = await Promise.all([
-    db.query(queries.totalActiveOrders),
-    db.query(queries.totalCancelledOrders),
-    db.query(queries.ordersByPosition),
-    db.query(queries.ordersByStatus)
-  ]);
+  const query = `
+    SELECT 
+      op.id as position_id,
+      op.name as position_name,
+      COUNT(o.id) as orders_count,
+      SUM(CASE WHEN o.is_active = 1 THEN 1 ELSE 0 END) as active_count,
+      SUM(CASE WHEN o.is_active = 0 THEN 1 ELSE 0 END) as cancelled_count
+    FROM order_position op
+    LEFT JOIN orders o ON o.position_id = op.id ${whereClause ? `AND ${whereClause.replace('WHERE', 'o.is_active')}` : ''}
+    GROUP BY op.id, op.name
+    ORDER BY op.id
+  `;
+
+  const [results] = await db.query(query, params);
 
   const summary = {
-    totalActiveOrders: results[0][0][0].count,
-    totalCancelledOrders: results[1][0][0].count,
-    ordersByPosition: results[2][0],
-    ordersByStatus: results[3][0].map(row => ({
-      isActive: row.is_active,
-      count: row.count
-    }))
+    ordersByPosition: results,
+    totalPositions: results.length,
+    totalOrders: results.reduce((sum, row) => sum + (row.orders_count || 0), 0),
+    totalActive: results.reduce((sum, row) => sum + (row.active_count || 0), 0),
+    totalCancelled: results.reduce((sum, row) => sum + (row.cancelled_count || 0), 0)
   };
 
   successResponse(res, summary, 'تم جلب الإحصائيات بنجاح');
