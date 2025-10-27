@@ -44,6 +44,7 @@ const purchaseInvoiceRoutes = require('./routes/purchaseInvoice.routes');
 const collectionsRoutes = require('./routes/collections.routes');
 const receivedOrdersRoutes = require('./routes/receivedOrders.routes');
 const financialReportsRoutes = require('./routes/financialReports.routes');
+const ordersStatisticsRoutes = require('./routes/ordersStatistics.routes');
 
 // Initialize Express app
 const app = express();
@@ -110,6 +111,7 @@ app.use('/api/v1/purchase-invoices', purchaseInvoiceRoutes);
 app.use('/api/v1/collections', collectionsRoutes);
 app.use('/api/v1/received-orders', receivedOrdersRoutes);
 app.use('/api/v1/financial-reports', financialReportsRoutes);
+app.use('/api/v1/orders-statistics', ordersStatisticsRoutes);
 
 // 404 handler
 app.use(notFound);
