@@ -40,7 +40,7 @@ exports.getOrdersStatistics = asyncHandler(async (req, res) => {
       oi.total_amount,
       oi.purchase_method,
       b.name as brand_name,
-      c.status as cart_status,
+      c.is_available as cart_is_available,
       col.status as collection_status
     FROM orders o
     LEFT JOIN order_position op ON o.position_id = op.id
