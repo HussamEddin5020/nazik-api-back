@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
 const asyncHandler = require('../utils/asyncHandler');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
@@ -32,23 +32,23 @@ exports.getContacts = asyncHandler(async (req, res) => {
 
     const url = `${DARB_ASSABIL_BASE_URL}/api/contacts?${queryParams.toString()}`;
 
-    const response = await fetch(url, {
-      method: 'GET',
+    const response = await axios.get(url, {
       headers: {
         'Authorization': `apikey ${DARB_ASSABIL_API_KEY}`, // Format: apikey <token>
         'X-API-VERSION': DARB_ASSABIL_API_VERSION,
         'X-ACCOUNT-ID': DARB_ASSABIL_ACCOUNT_ID,
         'Content-Type': 'application/json',
       },
+      validateStatus: () => true, // نستقبل أي status code
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status < 200 || response.status >= 300) {
+      const errorText = response.data ? JSON.stringify(response.data) : response.statusText;
       console.error('Darb Assabil API error:', errorText);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
 
     if (data.status === false) {
       return errorResponse(res, data.messages?.[0]?.message || 'خطأ من API درب السبيل', 400);

@@ -1,7 +1,7 @@
 const db = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { successResponse, errorResponse, generateId } = require('../utils/helpers');
-const fetch = require('node-fetch');
+const axios = require('axios');
 
 // Constants
 const EXCHANGE_RATE = 7.35; // Dollar to LYD
@@ -367,25 +367,27 @@ async function createLocalShipment({
       metadata: {},
     };
 
-    const response = await fetch(`${DARB_ASSABIL_BASE_URL}/api/local/shipments`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `apikey ${DARB_ASSABIL_API_KEY}`,
-        'X-API-VERSION': DARB_ASSABIL_API_VERSION,
-        'X-ACCOUNT-ID': DARB_ASSABIL_ACCOUNT_ID,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(shipmentPayload),
-    });
+    const response = await axios.post(
+      `${DARB_ASSABIL_BASE_URL}/api/local/shipments`,
+      shipmentPayload,
+      {
+        headers: {
+          'Authorization': `apikey ${DARB_ASSABIL_API_KEY}`,
+          'X-API-VERSION': DARB_ASSABIL_API_VERSION,
+          'X-ACCOUNT-ID': DARB_ASSABIL_ACCOUNT_ID,
+          'Content-Type': 'application/json',
+        },
+        validateStatus: () => true, // نستقبل أي status code
+      }
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status < 200 || response.status >= 300) {
+      const errorText = response.data ? JSON.stringify(response.data) : response.statusText;
       console.error('Error creating local shipment:', errorText);
       return { error: errorText, success: false };
     }
 
-    const data = await response.json();
-    return { ...data, success: true };
+    return { ...response.data, success: true };
   } catch (error) {
     console.error('Error creating local shipment:', error);
     return { error: error.message, success: false };
