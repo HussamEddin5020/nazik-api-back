@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
+const createOrderController = require('../controllers/createOrder.controller');
 const { verifyToken, isStaff } = require('../middleware/auth');
 const { checkPermissionNew } = require('../middleware/permissionMiddlewareNew');
 
@@ -55,6 +56,20 @@ router.get('/:id', checkPermissionNew('view_orders'), orderController.getOrderBy
  * @access  Private (create_orders permission)
  */
 router.post('/', checkPermissionNew('create_orders'), orderController.createOrder);
+
+/**
+ * @route   POST /api/v1/orders/create-complete
+ * @desc    Create complete order with all details (collection + order + order_details + order_invoices)
+ * @access  Private (Staff with create_orders permission)
+ */
+router.post('/create-complete', isStaff, checkPermissionNew('create_orders'), createOrderController.createCompleteOrder);
+
+/**
+ * @route   GET /api/v1/orders/available-collections/:customerId
+ * @desc    Get available collections for customer (less than 4 days old)
+ * @access  Private (Staff with create_orders permission)
+ */
+router.get('/available-collections/:customerId', isStaff, checkPermissionNew('create_orders'), createOrderController.getAvailableCollections);
 
 /**
  * @route   PUT /api/v1/orders/:id

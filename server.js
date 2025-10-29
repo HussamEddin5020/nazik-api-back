@@ -45,6 +45,8 @@ const collectionsRoutes = require('./routes/collections.routes');
 const receivedOrdersRoutes = require('./routes/receivedOrders.routes');
 const financialReportsRoutes = require('./routes/financialReports.routes');
 const ordersStatisticsRoutes = require('./routes/ordersStatistics.routes');
+const productRoutes = require('./routes/product.routes');
+const darbAssabilRoutes = require('./routes/darbAssabil.routes');
 
 // Initialize Express app
 const app = express();
@@ -112,6 +114,8 @@ app.use('/api/v1/collections', collectionsRoutes);
 app.use('/api/v1/received-orders', receivedOrdersRoutes);
 app.use('/api/v1/financial-reports', financialReportsRoutes);
 app.use('/api/v1/orders-statistics', ordersStatisticsRoutes);
+app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/darb-assabil', darbAssabilRoutes);
 
 // 404 handler
 app.use(notFound);
