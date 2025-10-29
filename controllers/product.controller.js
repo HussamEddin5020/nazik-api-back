@@ -17,39 +17,66 @@ exports.scrapeProduct = asyncHandler(async (req, res) => {
     return errorResponse(res, 'رابط المنتج مطلوب', 400);
   }
 
+  // Validate URL
   try {
+    new URL(url);
+  } catch (e) {
+    return errorResponse(res, 'الرابط غير صالح. تأكد من أنه يبدأ بـ http:// أو https://', 400);
+  }
+
+  try {
+    console.log(`⏳ [SCRAPER] بدء جلب بيانات المنتج من: ${url}`);
+    
     // Encode URL
     const encodedUrl = encodeURIComponent(url);
     
     // Build scrape.do API URL
     const scrapeUrl = `${SCRAPE_DO_BASE_URL}/?url=${encodedUrl}&token=${SCRAPE_DO_TOKEN}`;
+    
+    console.log(`📡 [SCRAPER] إرسال طلب إلى: ${SCRAPE_DO_BASE_URL}`);
 
-    // Call scrape.do API
+    // Call scrape.do API - بدون timeout ليتم إعطاؤه الوقت الكافي
     const response = await fetch(scrapeUrl, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'shein-scraper/1.0',
       },
-      timeout: 30000, // 30 seconds timeout
+      // لا نضع timeout - نتركه ينتظر حتى وصول الرد
     });
 
+    console.log(`✅ [SCRAPER] تم استلام الرد - Status: ${response.status}`);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [SCRAPER] خطأ من الخادم - Status: ${response.status}, Body: ${errorText.substring(0, 500)}`);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
+    console.log(`📥 [SCRAPER] بدء قراءة محتوى HTML...`);
     const html = await response.text();
+    console.log(`✅ [SCRAPER] تم استلام HTML - الطول: ${html.length} حرف`);
 
-    // Parse HTML to extract product data
-    // Try to find embedded JSON data first (more reliable)
-    const productData = parseProductData(html, url);
-
-    if (!productData) {
-      return errorResponse(res, 'فشل في استخراج بيانات المنتج من الصفحة', 400);
+    if (!html || html.length === 0) {
+      console.error(`❌ [SCRAPER] HTML فارغ`);
+      return errorResponse(res, 'تم استلام صفحة فارغة من الخادم', 400);
     }
 
+    // Parse HTML to extract product data
+    console.log(`🔍 [SCRAPER] بدء تحليل بيانات المنتج...`);
+    const productData = parseProductData(html, url);
+
+    if (!productData || !productData.title) {
+      console.error(`❌ [SCRAPER] فشل في استخراج بيانات المنتج`);
+      console.log(`📄 [SCRAPER] أول 1000 حرف من HTML: ${html.substring(0, 1000)}`);
+      return errorResponse(res, 'فشل في استخراج بيانات المنتج من الصفحة. تأكد من صحة الرابط.', 400);
+    }
+
+    console.log(`✅ [SCRAPER] تم استخراج بيانات المنتج بنجاح - العنوان: ${productData.title}`);
     successResponse(res, productData);
   } catch (error) {
-    console.error('Error scraping product:', error);
+    console.error('❌ [SCRAPER] Error scraping product:', error);
+    console.error('❌ [SCRAPER] Error message:', error.message);
+    console.error('❌ [SCRAPER] Error stack:', error.stack);
     
     if (error.name === 'AbortError' || error.message.includes('timeout')) {
       return errorResponse(res, 'انتهت مهلة الطلب، يرجى المحاولة مرة أخرى', 408);
@@ -61,7 +88,11 @@ exports.scrapeProduct = asyncHandler(async (req, res) => {
       return errorResponse(res, `خطأ من خدمة scraping: ${status}`, status);
     }
     
-    return errorResponse(res, 'حدث خطأ أثناء جلب بيانات المنتج', 500);
+    if (error.message.includes('fetch failed') || error.message.includes('ECONNREFUSED')) {
+      return errorResponse(res, 'فشل الاتصال بخادم scraping. تأكد من الاتصال بالإنترنت.', 503);
+    }
+    
+    return errorResponse(res, `حدث خطأ أثناء جلب بيانات المنتج: ${error.message}`, 500);
   }
 });
 
