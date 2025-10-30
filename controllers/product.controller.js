@@ -133,6 +133,40 @@ function parseProductData(htmlOrJson, originalUrl) {
     }
 
     // Otherwise, try to find JSON embedded in HTML (in script tags or window variables)
+    // Priority: try to extract a top-level `product: { ... }` block then reuse JSON extractor
+    const productKeyIndex = html.indexOf('"product"');
+    if (productKeyIndex !== -1) {
+      const colonIndex = html.indexOf(':', productKeyIndex);
+      if (colonIndex !== -1) {
+        // bracket matching
+        let i = colonIndex + 1;
+        while (i < html.length && /\s/.test(html[i])) i++;
+        if (html[i] === '{') {
+          let depth = 0;
+          let j = i;
+          while (j < html.length) {
+            const ch = html[j];
+            if (ch === '{') depth++;
+            else if (ch === '}') {
+              depth--;
+              if (depth === 0) { j++; break; }
+            }
+            j++;
+          }
+          if (depth === 0) {
+            const productJsonStr = html.slice(i, j);
+            try {
+              const productObj = { product: JSON.parse(productJsonStr) };
+              const extracted = extractFromJsonData(productObj, originalUrl);
+              if (extracted && extracted.title) return extracted;
+            } catch (_) {
+              // ignore and continue with other strategies
+            }
+          }
+        }
+      }
+    }
+
     // Look for product_price_info object
     let priceInfo = null;
     let sizeAttributes = null;
