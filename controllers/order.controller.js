@@ -50,10 +50,10 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     params.push(searchTerm, searchTerm, searchTerm, searchTerm);
   }
 
-  // Get total count
-  const countQuery = query.replace(/SELECT.*FROM/, 'SELECT COUNT(DISTINCT o.id) as total FROM');
+  // Get total count (robust against multiline SELECT)
+  const countQuery = query.replace(/SELECT[\s\S]*?FROM/, 'SELECT COUNT(DISTINCT o.id) as total FROM');
   const [countResult] = await db.query(countQuery, params);
-  const total = countResult[0].total;
+  const total = Number(countResult?.[0]?.total ?? 0);
 
   // Add pagination and ordering
   query += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
@@ -61,7 +61,10 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
 
   const [orders] = await db.query(query, params);
 
-  successResponse(res, buildPaginationResponse(orders, page, limit, total));
+  // Ensure array
+  const safeOrders = Array.isArray(orders) ? orders : [];
+
+  successResponse(res, buildPaginationResponse(safeOrders, page, limit, total));
 });
 
 /**
