@@ -362,15 +362,25 @@ function parseProductData(htmlOrJson, originalUrl) {
  */
 function extractFromJsonData(jsonData, originalUrl) {
   try {
+    // Support both flat JSON and nested { product: { ... } } structures
+    const p = jsonData.product || jsonData;
+
     const productData = {
-      title: jsonData.goods_name || jsonData.title || extractTitle(JSON.stringify(jsonData)) || '',
-      description: jsonData.goods_desc || jsonData.description || '',
-      image: jsonData.goods_img || jsonData.image || '',
+      title: p.goods_name || p.name || jsonData.goods_name || jsonData.title || extractTitle(JSON.stringify(jsonData)) || '',
+      description: p.goods_desc || p.description || jsonData.goods_desc || jsonData.description || '',
+      image: p.goods_img || p.image_url || p.image || jsonData.goods_img || jsonData.image || '',
       product_link: originalUrl,
     };
 
     // Extract pricing from product_price_info
-    if (jsonData.product_price_info) {
+    if (p.pricing && p.pricing.current_price && p.pricing.current_price.amount) {
+      const amt = p.pricing.current_price.amount;
+      productData.price = parseFloat(String(amt).replace(/[^0-9.]/g, ''));
+      productData.originalPrice = productData.price;
+      productData.currency = p.currency || 'USD';
+    }
+
+    if (!productData.price && jsonData.product_price_info) {
       const priceInfo = jsonData.product_price_info;
       const salePrice = priceInfo.salePrice?.usdAmount || priceInfo.salePrice?.amount;
       const retailPrice = priceInfo.retailPrice?.usdAmount || priceInfo.retailPrice?.amount;
@@ -394,7 +404,15 @@ function extractFromJsonData(jsonData, originalUrl) {
     }
 
     // Extract sizes from size_attributes
-    if (jsonData.size_attributes && jsonData.size_attributes.attr_value_list) {
+    if (p.sizes && Array.isArray(p.sizes)) {
+      productData.sizes = p.sizes
+        .filter(s => s.available !== false)
+        .map(s => ({
+          id: s.size_code || s.id || '',
+          name: s.size_code || s.us_size || '',
+          localSize: s.size_number || '',
+        }));
+    } else if (jsonData.size_attributes && jsonData.size_attributes.attr_value_list) {
       productData.sizes = jsonData.size_attributes.attr_value_list.map(item => ({
         id: item.attr_value_id || item.id || '',
         name: item.attr_value_name || item.attr_value_name_en || '',
@@ -403,7 +421,13 @@ function extractFromJsonData(jsonData, originalUrl) {
     }
 
     // Extract colors
-    if (jsonData.color_attributes && jsonData.color_attributes.attr_value_list) {
+    if (p.colors && Array.isArray(p.colors)) {
+      productData.colors = p.colors.map(c => ({
+        id: c.value || c.id || '',
+        name: c.name || '',
+        image: c.image_url || c.image || '',
+      }));
+    } else if (jsonData.color_attributes && jsonData.color_attributes.attr_value_list) {
       productData.colors = jsonData.color_attributes.attr_value_list.map(item => ({
         id: item.attr_value_id || item.id || '',
         name: item.attr_value_name || item.attr_value_name_en || '',
