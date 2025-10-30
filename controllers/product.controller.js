@@ -285,8 +285,16 @@ function parseProductData(htmlOrJson, originalUrl) {
       product_link: originalUrl,
     };
 
+    // Try: pricing.current_price.amount
+    const pricingCurrentMatch = html.match(/"pricing"\s*:\s*\{[\s\S]*?"current_price"\s*:\s*\{[\s\S]*?"amount"\s*:\s*"([\d.]+)"/);
+    if (pricingCurrentMatch) {
+      productData.price = parseFloat(pricingCurrentMatch[1]);
+      productData.originalPrice = productData.price;
+      productData.currency = 'USD';
+    }
+
     // Add pricing information from product_price_info
-    if (priceInfo) {
+    if (!productData.price && priceInfo) {
       const salePrice = priceInfo.salePrice?.usdAmount || priceInfo.salePrice?.amount;
       const retailPrice = priceInfo.retailPrice?.usdAmount || priceInfo.retailPrice?.amount;
       
